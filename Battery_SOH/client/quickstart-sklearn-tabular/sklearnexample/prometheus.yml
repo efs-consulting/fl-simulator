@@ -1,0 +1,21 @@
+
+
+
+global:
+  scrape_interval: 1s          # scrape every second
+  evaluation_interval: 1s
+
+scrape_configs:
+  - job_name: "flower-clients"
+    scrape_interval: 1s        # optional override (same as global)
+    static_configs:
+      - targets:
+          - "localhost:8000"   # client 1
+          - "localhost:8002"   # client 2
+
+  - job_name: "flower-server"
+    scrape_interval: 1s        # optional override
+    static_configs:
+      - targets:
+          - "localhost:8001"   # flower server metrics
+

@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  supernode-5:
+    image: flwr/supernode:${FLWR_VERSION:-1.23.0}
+    command:
+      - --insecure
+      - --superlink
+      - ${SERVER_IP:-host.docker.internal}:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9098
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=4 num-partitions=6"
+    ports:
+      - "9098:9098"
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  superexec-clientapp-5:
+    build:
+      context: ${PROJECT_DIR:-.}
+      dockerfile_inline: |
+        FROM flwr/superexec:${FLWR_VERSION:-1.23.0}
+        RUN pip install --no-cache-dir prometheus-client
+        RUN pip install --no-cache-dir psutil
+        WORKDIR /app1
+        COPY --chown=app:app pyproject.toml .
+        RUN sed -i 's/.*flwr\[simulation\].*//' pyproject.toml \
+          && python -m pip install -U --no-cache-dir .
+        ENTRYPOINT ["flower-superexec"]
+        
+    ports:
+      - "8005:8005"
+
+    command:
+      - --insecure
+      - --plugin-type
+      - clientapp
+      - --appio-api-address
+      - supernode-5:9098
+  
+    depends_on:
+      - supernode-5
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./quickstart-sklearn-tabular/Data:/app1/Data  
+      - ./quickstart-sklearn-tabular/Done:/app1/Done
