@@ -123,19 +123,7 @@ def load_data(partition_id: int , is_fit , test_battery_id=1 ):
 
     return train_x, train_y, test_x, test_y
 
-    # if partition_id == 1 or partition_id == 2 or partition_id ==3 or partition_id ==4 or partition_id ==5:
-    #     file = os.path.join("/app1/Data", "data.mat")
-
-    # elif partition_id == 0 or partition_id ==15:
-    #     file = os.path.join("/app/Data", "data.mat")
-    # else:
-    #     raise ValueError("Invalid partition_id")
     
-    # dataset = XJTUDdataset()
-    # train_x, train_y, test_x, test_y = dataset.get_charge_data(path=file,test_battery_id=test_battery_id)
-    # return train_x, train_y, test_x, test_y
-
-
 
 class XJTUDdataset():
     def __init__(self):
@@ -203,32 +191,6 @@ class XJTUDdataset():
             
 
       
-
-
-
-
-        # mat = loadmat(path)
-        # battery = mat['battery']
-        # battery_ids = list(range(1, battery.shape[1] + 1))
-        # if test_battery_id not in battery_ids:
-        #     raise IndexError(f'"test_battery" must be in the {battery_ids}, but got {test_battery_id}. ')
-
-        # test_battery = battery[0, test_battery_id - 1][0]
-        # print(f'test battery id: {test_battery_id}, test data shape: ', end='')
-        # test_x, test_y = self._parser_mat_data(test_battery)
-        # train_x, train_y = [], []
-        # for id in battery_ids:
-        #     if id == test_battery_id:
-        #         continue
-        #     print(f'train battery id: {id}, ', end='')
-        #     train_battery = battery[0, id - 1][0]
-        #     x, y = self._parser_mat_data(train_battery)
-        #     train_x.append(x)
-        #     train_y.append(y)
-        # train_x = np.concatenate(train_x, axis=0)
-        # train_y = np.concatenate(train_y, axis=0)
-        # print('train data shape: ', train_x.shape, train_y.shape)
-
 
     def get_charge_data(self,path , is_fit, test_battery_id=1 ,  ):
         print('----------- load charge data -------------')
@@ -318,36 +280,3 @@ def central_evaluate(server_round: int, parameters, config) -> MetricRecord:
 
 
 
-
-
-
-
-
-def aa(partition_id: int, num_partitions: int):
-    """Load local CSV data stored inside /app/data for each client."""
-
-
-    print(partition_id)
-    # Each client has its own data file:
-    if partition_id == 1:
-        file = os.path.join("/app1/Data", "data.csv")
-
-    elif partition_id == 0:
-        file = os.path.join("/app/Data", "data.csv")
-    else:
-        raise ValueError("Invalid partition_id")
-
-    print(f"Loading data from: {file}")
-
-    df = pd.read_csv(file)
-
-    # Features and labels
-    X = df[FEATURES]
-    y = df["label"]
-
-    # 80/20 train-test split
-    split = int(0.8 * len(df))
-    X_train, y_train = X[:split], y[:split]
-    X_test, y_test = X[split:], y[split:]
-
-    return X_train, y_train, X_test, y_test
