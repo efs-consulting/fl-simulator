@@ -1,0 +1,118 @@
+# Prometheus Alert Rules for FL Simulator
+# Created: 2025-11-29
+
+groups:
+  - name: fl_training_alerts
+    interval: 10s
+    rules:
+      # Alert: Training loss spike
+      - alert: FLTrainingLossSpike
+        expr: |
+          (fl_server_aggregated_loss - fl_server_aggregated_loss offset 1m)
+          / fl_server_aggregated_loss offset 1m > 0.5
+        for: 30s
+        labels:
+          severity: warning
+          component: training
+        annotations:
+          summary: "FL Training Loss Spike Detected"
+          description: "Aggregated loss increased by >50% in the last minute. Current: {{ $value | printf \"%.4f\" }}"
+
+      # Alert: R² degradation
+      - alert: FLR2Degradation
+        expr: fl_server_aggregated_train_r2 < 0.5
+        for: 1m
+        labels:
+          severity: warning
+          component: training
+        annotations:
+          summary: "FL Training R² Below Threshold"
+          description: "Aggregated R² dropped below 0.5. Current: {{ $value | printf \"%.4f\" }}"
+
+      # Alert: Central evaluation degradation
+      - alert: FLCentralEvalDegradation
+        expr: fl_server_cetral_evaluation_R2 < 0.3
+        for: 1m
+        labels:
+          severity: critical
+          component: evaluation
+        annotations:
+          summary: "Central Evaluation R² Critical"
+          description: "Central evaluation R² is critically low: {{ $value | printf \"%.4f\" }}"
+
+  - name: fl_client_alerts
+    interval: 15s
+    rules:
+      # Alert: Client timeout (no metrics for 2 minutes)
+      - alert: FLClientTimeout
+        expr: |
+          time() - max by(client_id) (timestamp(fl_client_train_r2)) > 120
+        for: 30s
+        labels:
+          severity: warning
+          component: client
+        annotations:
+          summary: "FL Client Not Responding"
+          description: "Client {{ $labels.client_id }} has not reported metrics for >2 minutes"
+
+      # Alert: Client resource exhaustion
+      - alert: FLClientHighCPU
+        expr: fl_client_cpu_fit_percent > 90
+        for: 1m
+        labels:
+          severity: warning
+          component: client
+        annotations:
+          summary: "FL Client High CPU Usage"
+          description: "Client {{ $labels.client_id }} CPU usage: {{ $value | printf \"%.1f\" }}%"
+
+      # Alert: Client memory usage
+      - alert: FLClientHighMemory
+        expr: fl_client_memory_fit_mb > 500
+        for: 1m
+        labels:
+          severity: warning
+          component: client
+        annotations:
+          summary: "FL Client High Memory Usage"
+          description: "Client {{ $labels.client_id }} memory usage: {{ $value | printf \"%.1f\" }}MB"
+
+      # Alert: Straggler detection (client taking >2x mean time)
+      - alert: FLClientStraggler
+        expr: |
+          fl_client_cpu_time_usage
+          > 2 * avg(fl_client_cpu_time_usage)
+        for: 30s
+        labels:
+          severity: info
+          component: client
+        annotations:
+          summary: "FL Client Straggler Detected"
+          description: "Client {{ $labels.client_id }} is taking significantly longer than average"
+
+  - name: fl_infrastructure_alerts
+    interval: 30s
+    rules:
+      # Alert: Prometheus target down
+      - alert: FLTargetDown
+        expr: up{job=~"flower-.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "FL Component Down"
+          description: "{{ $labels.job }} target {{ $labels.instance }} is down"
+
+      # Alert: No FL rounds progressing
+      - alert: FLNoProgress
+        expr: |
+          increase(fl_server_round[5m]) == 0
+          and fl_server_round > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: training
+        annotations:
+          summary: "FL Training Stalled"
+          description: "No new FL rounds completed in the last 5 minutes"

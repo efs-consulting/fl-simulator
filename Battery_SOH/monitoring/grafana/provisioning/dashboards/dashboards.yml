@@ -1,0 +1,16 @@
+# Grafana Dashboard Provisioning for FL Simulator
+# Created: 2025-11-29
+
+apiVersion: 1
+
+providers:
+  - name: "FL Simulator Dashboards"
+    orgId: 1
+    folder: "Federated Learning"
+    folderUid: "fl-dashboards"
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
