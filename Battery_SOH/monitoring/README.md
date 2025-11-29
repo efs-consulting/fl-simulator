@@ -20,7 +20,7 @@ docker compose logs -f
 
 | Service | URL | Default Credentials |
 |---------|-----|-------------------|
-| **Grafana** | http://localhost:3002 | admin / flsimulator2025 |
+| **Grafana** | http://localhost:3005 | admin / flsimulator2025 |
 | **Prometheus** | http://localhost:9090 | - |
 | **InfluxDB** | http://localhost:8086 | admin / flsimulator2025 |
 
@@ -53,7 +53,7 @@ docker compose logs -f
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                   GRAFANA                                   │
-│                   (Port 3002)                               │
+│                   (Port 3005)                               │
 │   • Interactive dashboards                                  │
 │   • Real-time visualization                                 │
 │   • Alerting & notifications                                │

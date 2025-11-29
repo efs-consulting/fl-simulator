@@ -1,5 +1,6 @@
 # Grafana Alerting Configuration for FL Simulator
 # Created: 2025-11-29
+# Note: Slack integration commented out - add SLACK_WEBHOOK_URL to enable
 
 apiVersion: 1
 
@@ -15,24 +16,6 @@ contactPoints:
           singleEmail: true
         disableResolveMessage: false
 
-  - orgId: 1
-    name: fl-alerts-slack
-    receivers:
-      - uid: slack-receiver
-        type: slack
-        settings:
-          # Configure your Slack webhook URL
-          url: "${SLACK_WEBHOOK_URL}"
-          recipient: "#fl-monitoring"
-          username: "FL Simulator Alerts"
-          icon_emoji: ":robot_face:"
-          mentionUsers: ""
-          mentionGroups: ""
-          mentionChannel: "here"
-          text: |
-            {{ template "slack.default.text" . }}
-        disableResolveMessage: false
-
 # Notification policies (routing)
 policies:
   - orgId: 1
@@ -41,14 +24,13 @@ policies:
       - alertname
       - severity
     routes:
-      # Critical alerts go to Slack immediately
-      - receiver: fl-alerts-slack
+      # Critical alerts - immediate
+      - receiver: fl-alerts-email
         matchers:
           - severity = critical
         group_wait: 10s
         group_interval: 1m
         repeat_interval: 4h
-        continue: true
 
       # Warning alerts with 1 minute delay
       - receiver: fl-alerts-email
@@ -98,10 +80,6 @@ templates:
       {{ end }}
       {{ end }}
 
-      {{ define "slack.default.text" }}
-      {{ template "fl.alert.message" . }}
-      {{ end }}
-
 # Mute timings (optional - for maintenance windows)
 muteTimes:
   - orgId: 1
@@ -112,3 +90,19 @@ muteTimes:
             end_time: "04:00"
         weekdays:
           - "sunday"
+
+# To enable Slack notifications:
+# 1. Set SLACK_WEBHOOK_URL environment variable
+# 2. Uncomment the slack contact point below
+# 3. Add slack routes to policies
+#
+# contactPoints:
+#   - orgId: 1
+#     name: fl-alerts-slack
+#     receivers:
+#       - uid: slack-receiver
+#         type: slack
+#         settings:
+#           url: "${SLACK_WEBHOOK_URL}"
+#           recipient: "#fl-monitoring"
+#           username: "FL Simulator Alerts"

@@ -85,12 +85,12 @@ services:
     image: grafana/grafana:10.2.0
     container_name: fl-grafana
     ports:
-      - "3002:3000"
+      - "3005:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-flsimulator2025}
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=http://localhost:3002
+      - GF_SERVER_ROOT_URL=http://localhost:3005
       - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
       # Enable anonymous access for development
       - GF_AUTH_ANONYMOUS_ENABLED=true
