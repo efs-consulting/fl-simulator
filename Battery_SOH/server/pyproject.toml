@@ -37,5 +37,5 @@ default = "local-simulation"
 options.num-supernodes = 3
 
 [tool.flwr.federations.remote-deployment]
-address = "localhost:9093"
+address = "superlink:9093"
 insecure = true

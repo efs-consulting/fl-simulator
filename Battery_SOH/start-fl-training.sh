@@ -72,7 +72,11 @@ start_monitoring() {
 start_server() {
     log "Starting FL Server (SuperLink + ServerApp)..."
     cd "$SCRIPT_DIR/server/server"
-    docker compose up -d
+
+    # Set PROJECT_DIR to parent directory where pyproject.toml is located
+    export PROJECT_DIR="$SCRIPT_DIR/server"
+
+    docker compose up -d --build
 
     log "Waiting for SuperLink to initialize..."
     sleep $WAIT_TIME
@@ -94,7 +98,11 @@ start_clients() {
         if [ -d "$client_dir" ]; then
             log "Starting Client $i..."
             cd "$client_dir"
-            docker compose up -d
+
+            # Set PROJECT_DIR to quickstart-sklearn-tabular where pyproject.toml is
+            export PROJECT_DIR="$client_dir/quickstart-sklearn-tabular"
+
+            docker compose up -d --build
             sleep 2
         else
             warn "Client$i directory not found, skipping..."
