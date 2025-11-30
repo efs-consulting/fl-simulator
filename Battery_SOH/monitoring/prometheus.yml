@@ -44,10 +44,11 @@ scrape_configs:
           component: "prometheus"
 
   # FL Server metrics (SuperExec ServerApp)
+  # Uses container name on fl-monitoring-network
   - job_name: "flower-server"
     scrape_interval: 1s
     static_configs:
-      - targets: ["host.docker.internal:8001"]
+      - targets: ["server-superexec-serverapp-1:8001"]
         labels:
           component: "server"
           role: "aggregator"
@@ -57,25 +58,18 @@ scrape_configs:
         replacement: "fl-server"
 
   # FL Client metrics (SuperExec ClientApps)
+  # Uses container names on fl-monitoring-network
   - job_name: "flower-clients"
     scrape_interval: 1s
     static_configs:
-      - targets: ["host.docker.internal:8000"]
-        labels:
-          component: "client"
-          client_id: "0"
-      - targets: ["host.docker.internal:8002"]
+      - targets: ["client1-superexec-clientapp-2-1:8002"]
         labels:
           component: "client"
           client_id: "1"
-      - targets: ["host.docker.internal:8003"]
+      - targets: ["client2-superexec-clientapp-3-1:8003"]
         labels:
           component: "client"
           client_id: "2"
-      - targets: ["host.docker.internal:8004"]
-        labels:
-          component: "client"
-          client_id: "3"
     relabel_configs:
       - source_labels: [client_id]
         target_label: partition_id

@@ -15,9 +15,11 @@ services:
       - "partition-id=1 num-partitions=6"
     ports:
       - "9095:9095"
-
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - fl-monitoring-network
 
   superexec-clientapp-2:
     build:
@@ -32,22 +34,26 @@ services:
         RUN sed -i 's/.*flwr\[simulation\].*//' pyproject.toml \
           && python -m pip install -U --no-cache-dir .
         ENTRYPOINT ["flower-superexec"]
-        
     ports:
       - "8002:8002"
-
     command:
       - --insecure
       - --plugin-type
       - clientapp
       - --appio-api-address
       - supernode-2:9095
-  
     depends_on:
       - supernode-2
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./quickstart-sklearn-tabular/Data:/app1/Data  
+      - ./quickstart-sklearn-tabular/Data:/app1/Data
       - ./quickstart-sklearn-tabular/Done:/app1/Done
+    networks:
+      - default
+      - fl-monitoring-network
+
+networks:
+  fl-monitoring-network:
+    external: true
 
