@@ -1,5 +1,6 @@
 # Grafana Data Sources for FL Simulator
 # Created: 2025-11-29
+# Updated: 2025-12-01 - Removed Prometheus, using InfluxDB only
 
 apiVersion: 1
 
@@ -17,19 +18,7 @@ datasources:
       defaultBucket: fl-metrics
       tlsSkipVerify: true
     secureJsonData:
-      token: ${INFLUXDB_TOKEN:-fl-simulator-token-2025}
-
-  # Prometheus - Real-time metrics and alerting
-  - name: Prometheus-FL
-    type: prometheus
-    access: proxy
-    url: http://prometheus:9090
-    uid: prometheus-fl
-    isDefault: false
-    jsonData:
-      timeInterval: "1s"
-      queryTimeout: "60s"
-      httpMethod: "POST"
+      token: fl-simulator-token-2025
 
   # InfluxDB Hourly Bucket (for downsampled data)
   - name: InfluxDB-FL-Hourly
@@ -43,4 +32,4 @@ datasources:
       defaultBucket: fl-metrics-hourly
       tlsSkipVerify: true
     secureJsonData:
-      token: ${INFLUXDB_TOKEN:-fl-simulator-token-2025}
+      token: fl-simulator-token-2025

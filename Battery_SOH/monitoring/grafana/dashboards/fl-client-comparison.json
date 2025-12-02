@@ -1,241 +1,136 @@
 {
   "annotations": {
-    "list": [
-      {
-        "builtIn": 1,
-        "datasource": {
-          "type": "grafana",
-          "uid": "-- Grafana --"
-        },
-        "enable": true,
-        "hide": true,
-        "iconColor": "rgba(0, 211, 255, 1)",
-        "name": "Annotations & Alerts",
-        "type": "dashboard"
-      }
-    ]
+    "list": []
   },
-  "description": "Compare performance metrics across all FL clients including R\u00b2, loss, CPU, and memory usage",
+  "description": "Compare performance metrics across all FL clients including R², loss, CPU, and memory usage",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
   "links": [],
-  "liveNow": true,
+  "liveNow": false,
   "panels": [
     {
       "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 1,
       "panels": [],
       "title": "Client Performance Overview",
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
-      },
+      "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
+          "color": { "mode": "palette-classic" },
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "R\u00b2 Score",
+            "axisLabel": "R² Score",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 2,
             "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
+            "scaleDistribution": { "type": "linear" },
             "showPoints": "auto",
             "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "line"
-            }
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "line" }
           },
           "decimals": 4,
           "mappings": [],
-          "max": 1,
-          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 0.7
-              }
+              { "color": "red", "value": null },
+              { "color": "green", "value": 0 }
             ]
           },
           "unit": "none"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 1
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
       "id": 2,
       "options": {
-        "legend": {
-          "calcs": ["last", "mean", "max"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "legend": { "calcs": ["last", "mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
-          },
-          "expr": "fl_client_train_r2",
-          "legendFormat": "Client {{client_id}}",
+          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_client_metrics\")\n  |> filter(fn: (r) => r._field == \"train_r2\")\n  |> filter(fn: (r) => r.stage == \"fit\")\n  |> group(columns: [\"client_id\"])\n  |> sort(columns: [\"_time\"])",
           "refId": "A"
         }
       ],
-      "title": "Client Train R\u00b2 Comparison",
+      "title": "Client Train R² Comparison",
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
-      },
+      "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
+          "color": { "mode": "palette-classic" },
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "R\u00b2 Score",
+            "axisLabel": "R² Score",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 2,
             "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
+            "scaleDistribution": { "type": "linear" },
             "showPoints": "auto",
             "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "line"
-            }
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "line" }
           },
           "decimals": 4,
           "mappings": [],
-          "max": 1,
-          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 0.7
-              }
+              { "color": "red", "value": null },
+              { "color": "green", "value": 0 }
             ]
           },
           "unit": "none"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 1
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
       "id": 3,
       "options": {
-        "legend": {
-          "calcs": ["last", "mean", "max"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "legend": { "calcs": ["last", "mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
-          },
-          "expr": "fl_client_test_r2",
-          "legendFormat": "Client {{client_id}}",
+          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_client_metrics\")\n  |> filter(fn: (r) => r._field == \"test_r2\")\n  |> filter(fn: (r) => r.stage == \"evaluate\")\n  |> group(columns: [\"client_id\"])\n  |> sort(columns: [\"_time\"])",
           "refId": "A"
         }
       ],
-      "title": "Client Test R\u00b2 Comparison",
+      "title": "Client Test R² Comparison",
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
-      },
+      "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
+          "color": { "mode": "palette-classic" },
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
@@ -245,71 +140,37 @@
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 2,
             "pointSize": 5,
-            "scaleDistribution": {
-              "log": 10,
-              "type": "log"
-            },
+            "scaleDistribution": { "log": 10, "type": "log" },
             "showPoints": "auto",
             "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
           },
           "decimals": 6,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
+            "steps": [{ "color": "green", "value": null }]
           },
           "unit": "none"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 9
-      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 9 },
       "id": 4,
       "options": {
-        "legend": {
-          "calcs": ["last", "min", "mean"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "asc"
-        }
+        "legend": { "calcs": ["last", "min", "mean"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "asc" }
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
-          },
-          "expr": "fl_client_loss",
-          "legendFormat": "Client {{client_id}}",
+          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_client_metrics\")\n  |> filter(fn: (r) => r._field == \"loss\")\n  |> filter(fn: (r) => r.stage == \"evaluate\")\n  |> group(columns: [\"client_id\"])\n  |> sort(columns: [\"_time\"])",
           "refId": "A"
         }
       ],
@@ -318,27 +179,17 @@
     },
     {
       "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 17
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
       "id": 5,
       "panels": [],
       "title": "Client Resource Usage",
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
-      },
+      "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
+          "color": { "mode": "palette-classic" },
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
@@ -348,27 +199,16 @@
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
+            "scaleDistribution": { "type": "linear" },
             "showPoints": "never",
             "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "line"
-            }
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "line" }
           },
           "decimals": 1,
           "mappings": [],
@@ -377,51 +217,25 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 70
-              },
-              {
-                "color": "red",
-                "value": 90
-              }
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red", "value": 90 }
             ]
           },
           "unit": "percent"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 18
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
       "id": 6,
       "options": {
-        "legend": {
-          "calcs": ["last", "mean", "max"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "legend": { "calcs": ["last", "mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
-          },
-          "expr": "fl_client_cpu_fit_percent",
-          "legendFormat": "Client {{client_id}}",
+          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_client_metrics\")\n  |> filter(fn: (r) => r._field == \"cpu_percent\")\n  |> filter(fn: (r) => r.stage == \"fit\")\n  |> group(columns: [\"client_id\"])\n  |> sort(columns: [\"_time\"])",
           "refId": "A"
         }
       ],
@@ -429,15 +243,10 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
-      },
+      "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
+          "color": { "mode": "palette-classic" },
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
@@ -447,78 +256,41 @@
             "drawStyle": "line",
             "fillOpacity": 20,
             "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
+            "scaleDistribution": { "type": "linear" },
             "showPoints": "never",
             "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "line"
-            }
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "line" }
           },
           "decimals": 1,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 256
-              },
-              {
-                "color": "red",
-                "value": 512
-              }
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 256 },
+              { "color": "red", "value": 512 }
             ]
           },
           "unit": "decmbytes"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 18
-      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
       "id": 7,
       "options": {
-        "legend": {
-          "calcs": ["last", "mean", "max"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "legend": { "calcs": ["last", "mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
-          },
-          "expr": "fl_client_memory_fit_mb",
-          "legendFormat": "Client {{client_id}}",
+          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_client_metrics\")\n  |> filter(fn: (r) => r._field == \"memory_mb\")\n  |> filter(fn: (r) => r.stage == \"fit\")\n  |> group(columns: [\"client_id\"])\n  |> sort(columns: [\"_time\"])",
           "refId": "A"
         }
       ],
@@ -527,27 +299,17 @@
     },
     {
       "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 26
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
       "id": 8,
       "panels": [],
       "title": "Client Training Time",
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
-      },
+      "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
+          "color": { "mode": "palette-classic" },
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
@@ -557,70 +319,37 @@
             "drawStyle": "bars",
             "fillOpacity": 80,
             "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
+            "scaleDistribution": { "type": "linear" },
             "showPoints": "auto",
             "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
           },
           "decimals": 3,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
+            "steps": [{ "color": "green", "value": null }]
           },
           "unit": "s"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 27
-      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 27 },
       "id": 9,
       "options": {
-        "legend": {
-          "calcs": ["last", "mean", "max"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "legend": { "calcs": ["last", "mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
-          },
-          "expr": "fl_client_cpu_time_usage",
-          "legendFormat": "Client {{client_id}}",
+          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_client_metrics\")\n  |> filter(fn: (r) => r._field == \"cpu_time_sec\")\n  |> filter(fn: (r) => r.stage == \"fit\")\n  |> group(columns: [\"client_id\"])\n  |> sort(columns: [\"_time\"])",
           "refId": "A"
         }
       ],
@@ -629,32 +358,20 @@
     },
     {
       "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 35
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 },
       "id": 10,
       "panels": [],
       "title": "Current Client Status",
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
-      },
+      "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
+          "color": { "mode": "thresholds" },
           "custom": {
             "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
+            "cellOptions": { "type": "auto" },
             "inspect": false
           },
           "decimals": 4,
@@ -662,156 +379,59 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 0.5
-              },
-              {
-                "color": "green",
-                "value": 0.8
-              }
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": -5 },
+              { "color": "green", "value": 0 }
             ]
           }
         },
         "overrides": [
           {
-            "matcher": {
-              "id": "byName",
-              "options": "Train R\u00b2"
-            },
+            "matcher": { "id": "byName", "options": "Train R²" },
             "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "mode": "gradient",
-                  "type": "gauge"
-                }
-              },
-              {
-                "id": "max",
-                "value": 1
-              },
-              {
-                "id": "min",
-                "value": 0
-              }
+              { "id": "custom.cellOptions", "value": { "mode": "gradient", "type": "gauge" } },
+              { "id": "max", "value": 1 },
+              { "id": "min", "value": -10 }
             ]
           },
           {
-            "matcher": {
-              "id": "byName",
-              "options": "Test R\u00b2"
-            },
+            "matcher": { "id": "byName", "options": "Test R²" },
             "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "mode": "gradient",
-                  "type": "gauge"
-                }
-              },
-              {
-                "id": "max",
-                "value": 1
-              },
-              {
-                "id": "min",
-                "value": 0
-              }
+              { "id": "custom.cellOptions", "value": { "mode": "gradient", "type": "gauge" } },
+              { "id": "max", "value": 1 },
+              { "id": "min", "value": -10 }
             ]
           }
         ]
       },
-      "gridPos": {
-        "h": 6,
-        "w": 24,
-        "x": 0,
-        "y": 36
-      },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 36 },
       "id": 11,
       "options": {
         "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": ["sum"],
-          "show": false
-        },
+        "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
         "showHeader": true,
         "sortBy": []
       },
       "pluginVersion": "10.2.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
-          },
-          "expr": "fl_client_train_r2",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "__auto",
+          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_client_metrics\")\n  |> filter(fn: (r) => r._field == \"train_r2\" or r._field == \"test_r2\" or r._field == \"loss\" or r._field == \"cpu_percent\")\n  |> group(columns: [\"client_id\", \"_field\"])\n  |> last()\n  |> pivot(rowKey: [\"client_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")",
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
-          },
-          "expr": "fl_client_test_r2",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "__auto",
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
-          },
-          "expr": "fl_client_loss",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "__auto",
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
-          },
-          "expr": "fl_client_cpu_fit_percent",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "__auto",
-          "refId": "D"
         }
       ],
       "title": "Current Client Metrics Summary",
       "transformations": [
         {
-          "id": "merge",
-          "options": {}
-        },
-        {
           "id": "organize",
           "options": {
-            "excludeByName": {
-              "Time": true,
-              "__name__": true,
-              "instance": true,
-              "job": true
-            },
+            "excludeByName": { "_time": true, "_start": true, "_stop": true, "_measurement": true, "round": true, "stage": true },
             "renameByName": {
-              "Value #A": "Train R\u00b2",
-              "Value #B": "Test R\u00b2",
-              "Value #C": "Loss",
-              "Value #D": "CPU %",
-              "client_id": "Client ID"
+              "client_id": "Client ID",
+              "train_r2": "Train R²",
+              "test_r2": "Test R²",
+              "loss": "Loss",
+              "cpu_percent": "CPU %"
             }
           }
         }
@@ -821,48 +441,13 @@
   ],
   "refresh": "5s",
   "schemaVersion": 38,
-  "tags": ["federated-learning", "flower", "clients"],
-  "templating": {
-    "list": [
-      {
-        "current": {
-          "selected": true,
-          "text": ["All"],
-          "value": ["$__all"]
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus-fl"
-        },
-        "definition": "label_values(fl_client_train_r2, client_id)",
-        "hide": 0,
-        "includeAll": true,
-        "label": "Client ID",
-        "multi": true,
-        "name": "client_id",
-        "options": [],
-        "query": {
-          "query": "label_values(fl_client_train_r2, client_id)",
-          "refId": "StandardVariableQuery"
-        },
-        "refresh": 2,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 1,
-        "type": "query"
-      }
-    ]
-  },
-  "time": {
-    "from": "now-1h",
-    "to": "now"
-  },
-  "timepicker": {
-    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]
-  },
+  "tags": ["federated-learning", "flower", "clients", "influxdb"],
+  "templating": { "list": [] },
+  "time": { "from": "now-48h", "to": "now" },
+  "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"] },
   "timezone": "browser",
   "title": "FL Client Comparison",
   "uid": "fl-client-comparison",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

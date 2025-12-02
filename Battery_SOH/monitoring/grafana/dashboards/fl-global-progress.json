@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Real-time monitoring of FL training progress including aggregated metrics, convergence curves, and central evaluation",
+  "description": "Real-time monitoring of FL training progress including aggregated metrics, convergence curves, and central evaluation (InfluxDB)",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -38,8 +38,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
+        "type": "influxdb",
+        "uid": "influxdb-fl"
       },
       "fieldConfig": {
         "defaults": {
@@ -83,10 +83,10 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
+            "type": "influxdb",
+            "uid": "influxdb-fl"
           },
-          "expr": "fl_server_round",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_training_progress\")\n  |> filter(fn: (r) => r._field == \"round\")\n  |> last()",
           "refId": "A"
         }
       ],
@@ -95,8 +95,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
+        "type": "influxdb",
+        "uid": "influxdb-fl"
       },
       "fieldConfig": {
         "defaults": {
@@ -149,20 +149,20 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
+            "type": "influxdb",
+            "uid": "influxdb-fl"
           },
-          "expr": "fl_server_aggregated_train_r2",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_train_r2\")\n  |> last()",
           "refId": "A"
         }
       ],
-      "title": "Aggregated Train R\u00b2",
+      "title": "Aggregated Train R2",
       "type": "gauge"
     },
     {
       "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
+        "type": "influxdb",
+        "uid": "influxdb-fl"
       },
       "fieldConfig": {
         "defaults": {
@@ -215,20 +215,20 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
+            "type": "influxdb",
+            "uid": "influxdb-fl"
           },
-          "expr": "fl_server_aggregated_test_r2",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_test_r2\")\n  |> last()",
           "refId": "A"
         }
       ],
-      "title": "Aggregated Test R\u00b2",
+      "title": "Aggregated Test R2",
       "type": "gauge"
     },
     {
       "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
+        "type": "influxdb",
+        "uid": "influxdb-fl"
       },
       "fieldConfig": {
         "defaults": {
@@ -281,10 +281,10 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
+            "type": "influxdb",
+            "uid": "influxdb-fl"
           },
-          "expr": "fl_server_aggregated_loss",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_loss\")\n  |> last()",
           "refId": "A"
         }
       ],
@@ -293,8 +293,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
+        "type": "influxdb",
+        "uid": "influxdb-fl"
       },
       "fieldConfig": {
         "defaults": {
@@ -347,14 +347,14 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
+            "type": "influxdb",
+            "uid": "influxdb-fl"
           },
-          "expr": "fl_server_cetral_evaluation_R2",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_central_evaluation\")\n  |> filter(fn: (r) => r._field == \"r2\")\n  |> last()",
           "refId": "A"
         }
       ],
-      "title": "Central Eval R\u00b2",
+      "title": "Central Eval R2",
       "type": "gauge"
     },
     {
@@ -372,8 +372,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
+        "type": "influxdb",
+        "uid": "influxdb-fl"
       },
       "fieldConfig": {
         "defaults": {
@@ -383,7 +383,7 @@
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "R\u00b2 Score",
+            "axisLabel": "R2 Score",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
@@ -414,7 +414,7 @@
           "decimals": 4,
           "mappings": [],
           "max": 1,
-          "min": 0,
+          "min": -1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -454,39 +454,36 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
+            "type": "influxdb",
+            "uid": "influxdb-fl"
           },
-          "expr": "fl_server_aggregated_train_r2",
-          "legendFormat": "Train R\u00b2",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_train_r2\")",
           "refId": "A"
         },
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
+            "type": "influxdb",
+            "uid": "influxdb-fl"
           },
-          "expr": "fl_server_aggregated_test_r2",
-          "legendFormat": "Test R\u00b2",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_test_r2\")",
           "refId": "B"
         },
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
+            "type": "influxdb",
+            "uid": "influxdb-fl"
           },
-          "expr": "fl_server_cetral_evaluation_R2",
-          "legendFormat": "Central Eval R\u00b2",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_central_evaluation\")\n  |> filter(fn: (r) => r._field == \"r2\")",
           "refId": "C"
         }
       ],
-      "title": "R\u00b2 Convergence",
+      "title": "R2 Convergence",
       "type": "timeseries"
     },
     {
       "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
+        "type": "influxdb",
+        "uid": "influxdb-fl"
       },
       "fieldConfig": {
         "defaults": {
@@ -562,20 +559,18 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
+            "type": "influxdb",
+            "uid": "influxdb-fl"
           },
-          "expr": "fl_server_aggregated_loss",
-          "legendFormat": "Aggregated Loss",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_loss\")",
           "refId": "A"
         },
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
+            "type": "influxdb",
+            "uid": "influxdb-fl"
           },
-          "expr": "fl_server_cetral_evaluation_loss",
-          "legendFormat": "Central Eval Loss",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_central_evaluation\")\n  |> filter(fn: (r) => r._field == \"loss\")",
           "refId": "B"
         }
       ],
@@ -597,8 +592,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-fl"
+        "type": "influxdb",
+        "uid": "influxdb-fl"
       },
       "fieldConfig": {
         "defaults": {
@@ -672,11 +667,10 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-fl"
+            "type": "influxdb",
+            "uid": "influxdb-fl"
           },
-          "expr": "fl_server_round",
-          "legendFormat": "FL Round",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_training_progress\")\n  |> filter(fn: (r) => r._field == \"round\")",
           "refId": "A"
         }
       ],
@@ -686,12 +680,12 @@
   ],
   "refresh": "5s",
   "schemaVersion": 38,
-  "tags": ["federated-learning", "flower", "battery-soh"],
+  "tags": ["federated-learning", "flower", "battery-soh", "influxdb"],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-48h",
     "to": "now"
   },
   "timepicker": {
@@ -700,6 +694,6 @@
   "timezone": "browser",
   "title": "FL Global Training Progress",
   "uid": "fl-global-progress",
-  "version": 1,
+  "version": 3,
   "weekStart": ""
 }

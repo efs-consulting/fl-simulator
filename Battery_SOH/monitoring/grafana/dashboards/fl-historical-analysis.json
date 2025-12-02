@@ -2,32 +2,19 @@
   "annotations": {
     "list": []
   },
-  "description": "Detailed round-by-round analysis of FL training including convergence rates, client participation, and model improvement",
+  "description": "Historical FL training data from InfluxDB - shows past training runs",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "links": [
-    {
-      "asDropdown": false,
-      "icon": "dashboard",
-      "includeVars": true,
-      "keepTime": true,
-      "tags": ["federated-learning"],
-      "targetBlank": false,
-      "title": "FL Dashboards",
-      "type": "dashboards",
-      "url": ""
-    }
-  ],
-  "liveNow": false,
+  "links": [],
   "panels": [
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 1,
       "panels": [],
-      "title": "Round Overview",
+      "title": "Training Summary (from InfluxDB)",
       "type": "row"
     },
     {
@@ -38,7 +25,7 @@
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "blue", "value": null }]
+            "steps": [{ "color": "green", "value": null }]
           },
           "unit": "none"
         },
@@ -52,17 +39,17 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "value_and_name"
+        "textMode": "auto"
       },
       "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
-          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_training_progress\")\n  |> filter(fn: (r) => r._field == \"round\")\n  |> last()",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_central_evaluation\")\n  |> filter(fn: (r) => r._field == \"r2\")\n  |> last()\n  |> map(fn: (r) => ({r with _value: r.round}))",
           "refId": "A"
         }
       ],
-      "title": "Total Rounds Completed",
+      "title": "Last Round",
       "type": "stat"
     },
     {
@@ -76,7 +63,7 @@
             "mode": "absolute",
             "steps": [
               { "color": "red", "value": null },
-              { "color": "yellow", "value": -5 },
+              { "color": "yellow", "value": -10 },
               { "color": "green", "value": 0 }
             ]
           },
@@ -92,17 +79,17 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "value_and_name"
+        "textMode": "auto"
       },
       "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
-          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_train_r2\")\n  |> last()",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_central_evaluation\")\n  |> filter(fn: (r) => r._field == \"r2\")\n  |> last()",
           "refId": "A"
         }
       ],
-      "title": "Current Train R²",
+      "title": "Final R² Score",
       "type": "stat"
     },
     {
@@ -132,17 +119,17 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "value_and_name"
+        "textMode": "auto"
       },
       "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
-          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_loss\")\n  |> last()",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_central_evaluation\")\n  |> filter(fn: (r) => r._field == \"loss\")\n  |> last()",
           "refId": "A"
         }
       ],
-      "title": "Current Loss",
+      "title": "Final Loss",
       "type": "stat"
     },
     {
@@ -156,7 +143,7 @@
             "mode": "absolute",
             "steps": [
               { "color": "red", "value": null },
-              { "color": "yellow", "value": -5 },
+              { "color": "yellow", "value": -10 },
               { "color": "green", "value": 0 }
             ]
           },
@@ -172,7 +159,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["max"], "fields": "", "values": false },
-        "textMode": "value_and_name"
+        "textMode": "auto"
       },
       "pluginVersion": "10.2.0",
       "targets": [
@@ -182,7 +169,7 @@
           "refId": "A"
         }
       ],
-      "title": "Best R² (Central Eval)",
+      "title": "Best R² Achieved",
       "type": "stat"
     },
     {
@@ -212,17 +199,17 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["min"], "fields": "", "values": false },
-        "textMode": "value_and_name"
+        "textMode": "auto"
       },
       "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
-          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_central_evaluation\")\n  |> filter(fn: (r) => r._field == \"loss\")\n  |> filter(fn: (r) => r._value > 0)\n  |> min()",
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_central_evaluation\")\n  |> filter(fn: (r) => r._field == \"loss\")\n  |> min()",
           "refId": "A"
         }
       ],
-      "title": "Best Loss (Central Eval)",
+      "title": "Best Loss Achieved",
       "type": "stat"
     },
     {
@@ -230,7 +217,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
       "id": 7,
       "panels": [],
-      "title": "Convergence Analysis",
+      "title": "Central Evaluation Convergence",
       "type": "row"
     },
     {
@@ -242,23 +229,23 @@
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "R² Score",
-            "axisPlacement": "left",
+            "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "opacity",
+            "fillOpacity": 10,
+            "gradientMode": "none",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 2,
-            "pointSize": 6,
+            "pointSize": 8,
             "scaleDistribution": { "type": "linear" },
             "showPoints": "always",
             "spanNulls": false,
             "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "dashed" }
+            "thresholdsStyle": { "mode": "line" }
           },
-          "decimals": 4,
+          "decimals": 2,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -269,40 +256,22 @@
           },
           "unit": "none"
         },
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "Central Evaluation R²" },
-            "properties": [
-              { "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } },
-              { "id": "custom.lineStyle", "value": { "dash": [10, 10], "fill": "dash" } }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": { "h": 10, "w": 12, "x": 0, "y": 6 },
       "id": 8,
       "options": {
-        "legend": { "calcs": ["first", "last", "max", "mean"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "legend": { "calcs": ["last", "max", "mean"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
       },
       "targets": [
         {
           "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
-          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_train_r2\")\n  |> sort(columns: [\"_time\"])",
-          "refId": "A"
-        },
-        {
-          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
-          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_test_r2\")\n  |> sort(columns: [\"_time\"])",
-          "refId": "B"
-        },
-        {
-          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
           "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_central_evaluation\")\n  |> filter(fn: (r) => r._field == \"r2\")\n  |> sort(columns: [\"_time\"])",
-          "refId": "C"
+          "refId": "A"
         }
       ],
-      "title": "R² Convergence Over Rounds",
+      "title": "R² Score Evolution (Central Evaluation)",
       "type": "timeseries"
     },
     {
@@ -314,11 +283,231 @@
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "Loss (MSE)",
-            "axisPlacement": "left",
+            "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "opacity",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 8,
+            "scaleDistribution": { "log": 10, "type": "log" },
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "decimals": 6,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 6 },
+      "id": 9,
+      "options": {
+        "legend": { "calcs": ["last", "min", "mean"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_central_evaluation\")\n  |> filter(fn: (r) => r._field == \"loss\")\n  |> sort(columns: [\"_time\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "Loss Evolution (Log Scale)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
+      "id": 10,
+      "panels": [],
+      "title": "Client Performance Comparison",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Train R²",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 6,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+      "id": 11,
+      "options": {
+        "legend": { "calcs": ["last", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_client_metrics\")\n  |> filter(fn: (r) => r._field == \"train_r2\")\n  |> filter(fn: (r) => r.stage == \"fit\")\n  |> group(columns: [\"client_id\"])\n  |> sort(columns: [\"_time\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "Client Training R² (by Client)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Test R²",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 6,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+      "id": 12,
+      "options": {
+        "legend": { "calcs": ["last", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_client_metrics\")\n  |> filter(fn: (r) => r._field == \"test_r2\")\n  |> filter(fn: (r) => r.stage == \"evaluate\")\n  |> group(columns: [\"client_id\"])\n  |> sort(columns: [\"_time\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "Client Test R² (by Client)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+      "id": 13,
+      "panels": [],
+      "title": "Server Aggregated Metrics",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Aggregated R²",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 6,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+      "id": 14,
+      "options": {
+        "legend": { "calcs": ["last", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_train_r2\" or r._field == \"aggregated_test_r2\")\n  |> sort(columns: [\"_time\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "Server Aggregated R² (Train & Test)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Aggregated Loss",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false,
             "lineInterpolation": "smooth",
@@ -340,219 +529,32 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 6 },
-      "id": 9,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+      "id": 15,
       "options": {
-        "legend": { "calcs": ["first", "last", "min", "mean"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "asc" }
+        "legend": { "calcs": ["last", "min"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
       },
       "targets": [
         {
           "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
           "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_loss\")\n  |> sort(columns: [\"_time\"])",
           "refId": "A"
-        },
-        {
-          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
-          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_central_evaluation\")\n  |> filter(fn: (r) => r._field == \"loss\")\n  |> sort(columns: [\"_time\"])",
-          "refId": "B"
         }
       ],
-      "title": "Loss Reduction Over Rounds (Log Scale)",
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
-      "id": 10,
-      "panels": [],
-      "title": "R² Improvement Analysis",
-      "type": "row"
-    },
-    {
-      "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "continuous-GrYlRd" },
-          "custom": {
-            "axisCenteredZero": true,
-            "axisColorMode": "text",
-            "axisLabel": "R² Change",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 80,
-            "gradientMode": "scheme",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
-          },
-          "decimals": 6,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
-      "id": 11,
-      "options": {
-        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "single", "sort": "none" }
-      },
-      "targets": [
-        {
-          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
-          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_train_r2\")\n  |> sort(columns: [\"_time\"])\n  |> difference()",
-          "refId": "A"
-        }
-      ],
-      "title": "R² Improvement per Round",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "continuous-RdYlGr" },
-          "custom": {
-            "axisCenteredZero": true,
-            "axisColorMode": "text",
-            "axisLabel": "Loss Change",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 80,
-            "gradientMode": "scheme",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
-          },
-          "decimals": 6,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
-      "id": 12,
-      "options": {
-        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "single", "sort": "none" }
-      },
-      "targets": [
-        {
-          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
-          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_loss\")\n  |> sort(columns: [\"_time\"])\n  |> difference()",
-          "refId": "A"
-        }
-      ],
-      "title": "Loss Reduction per Round",
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
-      "id": 13,
-      "panels": [],
-      "title": "Client Participation",
-      "type": "row"
-    },
-    {
-      "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "R² Score",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 5,
-            "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "insertNulls": false,
-            "lineInterpolation": "smooth",
-            "lineWidth": 1,
-            "pointSize": 4,
-            "scaleDistribution": { "type": "linear" },
-            "showPoints": "always",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
-          },
-          "decimals": 4,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }]
-          },
-          "unit": "none"
-        },
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "Aggregated (Server)" },
-            "properties": [
-              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } },
-              { "id": "custom.lineWidth", "value": 3 }
-            ]
-          }
-        ]
-      },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 26 },
-      "id": 14,
-      "options": {
-        "legend": { "calcs": ["last", "mean"], "displayMode": "table", "placement": "right", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "targets": [
-        {
-          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
-          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_client_metrics\")\n  |> filter(fn: (r) => r._field == \"train_r2\")\n  |> filter(fn: (r) => r.stage == \"fit\")\n  |> group(columns: [\"client_id\"])\n  |> sort(columns: [\"_time\"])",
-          "refId": "A"
-        },
-        {
-          "datasource": { "type": "influxdb", "uid": "influxdb-fl" },
-          "query": "from(bucket: \"fl-metrics\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"fl_server_metrics\")\n  |> filter(fn: (r) => r._field == \"aggregated_train_r2\")\n  |> sort(columns: [\"_time\"])",
-          "refId": "B"
-        }
-      ],
-      "title": "Individual Client vs Aggregated R²",
+      "title": "Server Aggregated Loss (Log Scale)",
       "type": "timeseries"
     }
   ],
-  "refresh": "10s",
+  "refresh": "",
   "schemaVersion": 38,
-  "tags": ["federated-learning", "flower", "analysis", "influxdb"],
+  "tags": ["federated-learning", "flower", "influxdb", "historical"],
   "templating": { "list": [] },
   "time": { "from": "now-48h", "to": "now" },
   "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"] },
   "timezone": "browser",
-  "title": "FL Round Analysis",
-  "uid": "fl-round-analysis",
-  "version": 2,
+  "title": "FL Historical Analysis (InfluxDB)",
+  "uid": "fl-historical-influxdb",
+  "version": 1,
   "weekStart": ""
 }
