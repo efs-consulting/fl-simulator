@@ -9,9 +9,9 @@ services:
       - --isolation
       - process
       - --insecure
-      - --database=state/state.db
-    volumes:
-      - ./state/:/app/state/:rw
+      - --database=/tmp/state.db
+    tmpfs:
+      - /tmp
     ports:
       - "9091:9091"
       - "9092:9092"
@@ -27,6 +27,7 @@ services:
         FROM flwr/superexec:${FLWR_VERSION:-1.23.0}
         RUN pip install --no-cache-dir prometheus-client
         RUN pip install --no-cache-dir psutil
+        RUN pip install --no-cache-dir influxdb-client
         WORKDIR /app
         COPY --chown=app:app pyproject.toml .
         COPY --chown=app:app sklearnexample/ ./sklearnexample/
@@ -54,3 +55,6 @@ services:
 networks:
   fl-monitoring-network:
     external: true
+
+volumes:
+  superlink-state:

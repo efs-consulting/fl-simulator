@@ -28,6 +28,7 @@ services:
         FROM flwr/superexec:${FLWR_VERSION:-1.23.0}
         RUN pip install --no-cache-dir prometheus-client
         RUN pip install --no-cache-dir psutil
+        RUN pip install --no-cache-dir influxdb-client
         WORKDIR /app1
         COPY --chown=app:app pyproject.toml .
         COPY --chown=app:app sklearnexample/ ./sklearnexample/

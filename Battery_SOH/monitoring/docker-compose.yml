@@ -1,6 +1,7 @@
 # FL Simulator Monitoring Stack
-# InfluxDB + Prometheus + Grafana for Federated Learning Visualization
+# InfluxDB + Grafana for Federated Learning Visualization
 # Created: 2025-11-29
+# Updated: 2025-12-01 - Removed Prometheus (using InfluxDB only)
 
 services:
   # ============================================
@@ -42,43 +43,6 @@ services:
           memory: 512M
 
   # ============================================
-  # Prometheus - Real-time Metrics & Alerting
-  # ============================================
-  prometheus:
-    image: prom/prometheus:v2.47.0
-    container_name: fl-prometheus
-    ports:
-      - "9090:9090"
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--storage.tsdb.retention.time=7d"
-      - "--web.enable-lifecycle"
-      - "--web.enable-admin-api"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./prometheus-alerts.yml:/etc/prometheus/alerts.yml:ro
-      - prometheus_data:/prometheus
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - fl-monitoring
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 512M
-        reservations:
-          cpus: "0.25"
-          memory: 256M
-
-  # ============================================
   # Grafana - Visualization & Dashboards
   # ============================================
   grafana:
@@ -95,8 +59,8 @@ services:
       # Enable anonymous access for development
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
-      # Dashboard settings
-      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/fl-global-progress.json
+      # Dashboard settings - use the InfluxDB-based dashboard
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/fl-historical-analysis.json
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
@@ -111,8 +75,6 @@ services:
       start_period: 30s
     depends_on:
       influxdb:
-        condition: service_healthy
-      prometheus:
         condition: service_healthy
     networks:
       - fl-monitoring
@@ -130,8 +92,6 @@ volumes:
   influxdb_data:
     driver: local
   influxdb_config:
-    driver: local
-  prometheus_data:
     driver: local
   grafana_data:
     driver: local
