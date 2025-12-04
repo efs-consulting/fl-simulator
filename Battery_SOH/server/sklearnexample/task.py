@@ -4,81 +4,109 @@ from flwr_datasets import FederatedDataset
 from flwr_datasets.partitioner import IidPartitioner
 from sklearn.linear_model import LogisticRegression
 from scipy.io import loadmat
-import numpy as np
 import pandas as pd
-# from torch.utils.data import TensorDataset,DataLoader
 from sklearn.model_selection import train_test_split
 import os
 import matplotlib.pyplot as plt
-
-# This information is needed to create a correct scikit-learn model
-from sklearn.linear_model import Ridge # Import the appropriate regression model
-from sklearn.linear_model import LogisticRegression # Keep this import, but it won't be used
-from typing import List
-import numpy as np
-
-# --- Configuration Constants (Must be defined based on your data) ---
-# Your features are 4 * 128, which must be flattened for scikit-learn
-FEATURES = 4 * 128  # 512
-# Your target is a single ratio (SOH)
-UNIQUE_LABELS = 1 
-NDArrays = List[np.ndarray]
-# -------------------------------------------------------------------
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import Ridge
+from sklearn.linear_model import LogisticRegression 
+from torch import nn
+from typing import List, Tuple
+from flwr.common import ndarrays_to_parameters, parameters_to_ndarrays
+from sklearn.metrics import mean_squared_error, r2_score
+import torch
 
 
-# NOTE: Type hints are updated to Ridge, but function names remain the same
-# task.py
-def get_model_parameters(model) -> NDArrays:
-    """Works for Ridge, SGDRegressor, etc."""
-    params = [model.coef_.copy()]
-    if getattr(model, "intercept_", None) is not None:
-        params.append(np.array([model.intercept_.item()]))  # force 1-element array
+
+
+
+
+class Net(nn.Module):
+    def __init__(self, n_input: int = 6, n_hidden: int = 32):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_input, n_hidden),
+            nn.ReLU(),
+            nn.Linear(n_hidden, n_hidden),
+            nn.ReLU(),
+            nn.Linear(n_hidden, n_hidden),
+            nn.ReLU(),
+            # MODIFICATION 1: Change output dimension from 1 to 2
+            nn.Linear(n_hidden, 2)  
+        )
+
+    def forward(self, x):
+        return self.net(x).squeeze(1)  # (batch,) logits
+
+
+# -------------------------
+# Parameter conversion utils (PyTorch <-> NumPy NDArrays)
+# -------------------------
+def get_numpy_parameters(model: nn.Module) -> List[np.ndarray]:
+    """Return model parameters as list of NumPy arrays (weights then biases)."""
+    params: List[np.ndarray] = []
+    for param in model.state_dict().values():
+        params.append(param.cpu().numpy())
     return params
 
-def set_model_params(model, params: NDArrays):
-    model.coef_ = params[0]
-    if len(params) > 1:
-        model.intercept_ = params[1]
-    return model
 
-def set_initial_params(model, n_classes: int, n_features: int):
-    model.coef_ = np.zeros(n_features, dtype=np.float64)
-    if getattr(model, "fit_intercept", True):
-        model.intercept_ = np.zeros(1, dtype=np.float64)
+def set_numpy_parameters(model: nn.Module, params: List[np.ndarray]) -> None:
+    """Load parameters from list of NumPy arrays (same ordering as state_dict())."""
+    state_dict = model.state_dict()
+    if len(params) != len(state_dict):
+        raise ValueError(f"Expected {len(state_dict)} arrays but got {len(params)}")
+    new_state = {}
+    for (k, v), p in zip(state_dict.items(), params):
+        new_state[k] = torch.tensor(p, dtype=state_dict[k].dtype)
+    model.load_state_dict(new_state)
 
-# NOTE: The model is switched to Ridge, but the function name remains the same
-# === task.py ===
-from sklearn.linear_model import SGDRegressor
 
-def create_log_reg_and_instantiate_parameters(penalty):
-    # In task.py → create_log_reg_and_instantiate_parameters
-    model = SGDRegressor(
-    penalty="l2",
-    alpha=0.0001,              # reasonable L2
-    learning_rate="constant",
-    eta0=1e-5,                 # ← 0.00001 instead of 0.001 or 0.0001
-    max_iter=1,
-    tol=None,
-    shuffle=True,
-    random_state=42,
-    warm_start=True,
-    fit_intercept=True,        # make sure this is True (default)
-)
-    set_initial_params(model, n_classes=UNIQUE_LABELS, n_features=FEATURES)
-    return model
+def initialize_model_parameters(model: nn.Module) -> List[np.ndarray]:
+    """Return initial parameters (zeros or default init). Useful for server init."""
+    return get_numpy_parameters(model)
+
+
+# -------------------------
+# Training / Eval helpers
+# -------------------------
+def train_one_epoch(model: nn.Module, train_loader, criterion, optimizer, device):
+    model.train()
+    total_loss = 0.0
+    for X, y in train_loader:
+        X = X.to(device).float()
+        y = y.to(device).float()  
+        optimizer.zero_grad()
+        logits = model(X)  
+        loss = criterion(logits, y)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item() * X.size(0)
+    return total_loss / len(train_loader.dataset)
+
+
+def evaluate_model(model: nn.Module, test_loader, criterion, device) -> Tuple[float, float]:
+    """Returns (loss, accuracy)."""
+    model.eval()
+    total_loss = 0.0
+    correct = 0
+    n = 0
+    with torch.no_grad():
+        for X, y in test_loader:
+            X = X.to(device).float()
+            y = y.to(device).float()
+            logits = model(X)
+            loss = criterion(logits, y)
+            total_loss += loss.item() * X.size(0)
+            probs = torch.sigmoid(logits)
+            preds = (probs >= 0.5).long()
+            correct += (preds.cpu().numpy() == y.cpu().numpy()).sum()
+            n += X.size(0)
+    return total_loss / n, correct / n
+
 
 
 fds = None  # Cache FederatedDataset
-
-import pandas as pd
-import os
-
-
-
-
-
-# Data loading function
-
 
 
 
@@ -92,7 +120,7 @@ def load_data(partition_id: int , is_fit , test_battery_id=1 ):
         done_dir = "/app1/Done"
 
 
-    elif partition_id == 0 or partition_id == 15:
+    elif  partition_id == 15: # Partion 15 is the central test set in the server
         folder = "/app/Data"
         done_dir = "/app/Done"
 
@@ -109,13 +137,57 @@ def load_data(partition_id: int , is_fit , test_battery_id=1 ):
     files.sort()  # to ensure deterministic first element
     file = files[0]   # path of the first file
     print(f"Loading data from: {file}")
-    # --- use the file as before ---
-    dataset = XJTUDdataset()
+   
 
-    train_x, train_y, test_x, test_y = dataset.get_charge_data(path=file,is_fit= is_fit,  test_battery_id=test_battery_id) 
+    df = pd.read_csv(file)
 
-    # --- NEW: move processed file to /app1/Done ---
-    # os.makedirs(done_dir, exist_ok=True)
+    
+    cutoff = int(len(df) * 0.8)
+    data = df.iloc[:cutoff]
+    data = data.iloc[:, [8,0,1,2,3,4,5]]
+
+    train_x = data.iloc[:, :-1].values
+    train_y = data.iloc[:, -1].values
+
+# Scaling (Z-score normalization)
+    INDICES_TO_SCALE = [1, 2, 3, 4] 
+    scaler = StandardScaler()
+    train_x_to_scale = train_x[:, INDICES_TO_SCALE]
+    scaler.fit(train_x_to_scale)
+    train_x[:, INDICES_TO_SCALE] = scaler.transform(train_x_to_scale)
+
+
+
+# Get first 80% of the rows
+    if is_fit == True :
+          
+        train_y = train_y.squeeze()
+        type_mapping = {'L': 1, 'M': 2, 'H': 3}
+        train_x[:, 0] = np.vectorize(type_mapping.get)(train_x[:, 0])
+
+        test_x = None
+        test_y = None
+
+
+    elif is_fit == False :
+        df = pd.read_csv(file)
+        cutoff = int(len(df) * 0.8)
+        data = df.iloc[cutoff:]
+        data = data.iloc[:, [8,0,1,2,3,4,5]]
+
+
+        test_x = data.iloc[:, :-1].values
+        INDICES_TO_SCALE = [1, 2, 3, 4] 
+        test_x_to_scale = test_x[:, INDICES_TO_SCALE]
+        test_x[:, INDICES_TO_SCALE] = scaler.transform(test_x_to_scale)
+        test_y = data.iloc[:, -1].values
+        test_y = test_y.squeeze()
+        type_mapping = {'L': 1, 'M': 2, 'H': 3}
+        test_x[:, 0] = np.vectorize(type_mapping.get)(test_x[:, 0])
+
+        train_x = None
+        train_y = None
+
 
     if partition_id != 15 and is_fit == False :
         shutil.copy2(file, done_dir)  # copy file
@@ -123,7 +195,7 @@ def load_data(partition_id: int , is_fit , test_battery_id=1 ):
 
     return train_x, train_y, test_x, test_y
 
-    
+
 
 class XJTUDdataset():
     def __init__(self):
@@ -190,8 +262,6 @@ class XJTUDdataset():
             return None , None , test_x, test_y
             
 
-      
-
     def get_charge_data(self,path , is_fit, test_battery_id=1 ,  ):
         print('----------- load charge data -------------')
 
@@ -201,10 +271,6 @@ class XJTUDdataset():
         
         print('-------------  finished !  ---------------')
         return train_x, train_y, test_x, test_y
-
-
-
-
 
 class Scaler():
     def __init__(self,data):  # data.shape (N,C,L)  or (N,C)
@@ -236,46 +302,56 @@ class Scaler():
         return X
 
 
-from flwr.common import ndarrays_to_parameters, parameters_to_ndarrays
-from sklearn.metrics import mean_squared_error, r2_score
 
 def central_evaluate(server_round: int, parameters, config) -> MetricRecord:
-    """Evaluate model on the server side."""
+    """Evaluate the NN model on server-side dataset."""
 
-    # Load the model and initialize it with the received weights
-    model = create_log_reg_and_instantiate_parameters("l2")
-    set_model_params(model, parameters)
-    X_test, y_test, X_train, y_train = load_data(15 , is_fit = True)
-    num_samples = X_test.shape[0]
-    X_test_flat = X_test.reshape(num_samples, -1).astype(np.float64)
-    y_test = y_test.astype(np.float64)
+    # ---- Recreate Model ----
+    model = Net()
+    # Assuming you have the correct implementation of set_numpy_parameters
+    set_numpy_parameters(model, parameters)     
+    model.eval()
+    
+    # Assuming device is defined somewhere (standard PyTorch setup)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
 
-    y_pred = model.predict(X_test_flat)
-    mse_loss = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
+    # ---- Load Evaluation Data (partition 15 is your central test set) ----
+    _,_,X_test, y_test= load_data(15, is_fit=False)
 
+    
+    # Convert features to correct shape: (N, 6)
+    X_test = X_test.reshape(X_test.shape[0], -1).astype(np.float32)
+    
+    # 1. TARGET CONVERSION: y_test must be integers (np.int64) for CrossEntropyLoss
+    y_test_int = y_test.astype(np.int64)
+    
+    # Torch tensors
+    X_test_t = torch.tensor(X_test, dtype=torch.float32, device=device)
+    # y_test_t must be 1D torch.Long tensor of class indices (0 or 1)
+    y_test_t = torch.tensor(y_test_int, dtype=torch.long, device=device).flatten()
+    
+    # 2. DEFINE WEIGHTED LOSS (for consistency with training)
+    # Use the 72%/28% ratio weight [1.0, 2.57]
+    class_weights = torch.tensor([1.0, 2.57], dtype=torch.float32, device=device)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    
+    # ---- Forward Pass ----
+    with torch.no_grad():
+        y_pred_logits = model(X_test_t) # Output shape: (N, 2)
+        
+        # Calculate loss using the weighted CrossEntropyLoss
+        loss = criterion(y_pred_logits, y_test_t).item()
 
+        # 3. PREDICTION: Use argmax to get the predicted class index (0 or 1)
+        y_pred_indices = torch.argmax(y_pred_logits, dim=1).cpu().numpy()
 
+    # 4. ACCURACY CALCULATION: Compare predicted indices against true indices (y_test_int)
+    accuracy = (y_pred_indices == y_test_int).mean()
 
-
-    # Return the evaluation metrics
-    return      mse_loss, {"r2": r2}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    return loss, {
+        "accuracy": float(accuracy)
+    }
 
 
 

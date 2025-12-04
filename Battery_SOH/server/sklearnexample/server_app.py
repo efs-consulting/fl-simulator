@@ -118,26 +118,27 @@ def _start_prometheus(port: int = 8001):
 # Start Prometheus server
 _start_prometheus(port=int(os.getenv("SERVER_METRICS_PORT", "8001")))
 
-# ---- Global aggregated metrics ----
 SERVER_ROUND = Gauge("fl_server_round", "Current federated learning round")
-SERVER_AGG_TRAIN_R2 = Gauge("fl_server_aggregated_train_r2", "Aggregated train R²")
-SERVER_AGG_TEST_R2 = Gauge("fl_server_aggregated_test_r2", "Aggregated test R²")
+SERVER_AGG_TRAIN_ACCURACY = Gauge("fl_server_aggregated_train_accuracy", "Aggregated train R²")
+SERVER_AGG_TEST_ACCURACY = Gauge("fl_server_aggregated_test_accuracy", "Aggregated test R²")
 SERVER_AGG_LOSS = Gauge("fl_server_aggregated_loss", "Aggregated test loss")
+SERVER_AGG_TRAIN_F1 = Gauge("fl_server_aggregated_train_f1", "Aggregated train F1-score")
+SERVER_AGG_TEST_F1 = Gauge("fl_server_aggregated_test_f1", "Aggregated test F1-score")
 
-
-SERVER_CENTRAL_EVAL_R2 = Gauge("fl_server_cetral_evaluation_R2", "central evaluation r2")
+SERVER_CENTRAL_EVAL_ACCURACY = Gauge("fl_server_cetral_evaluation_R2", "central evaluation r2")
 SERVER_CENTRAL_EVAL_LOSS = Gauge("fl_server_cetral_evaluation_loss", "central evaluation loss")
 
 # ---- Per-client metrics (SEPARATE) ----
-CLIENT_TRAIN_R2 = Gauge("fl_client_train_r2","Client training R²",["client_id"],)
-CLIENT_TEST_R2 = Gauge("fl_client_test_r2","Client testing R²",["client_id"],)
+CLIENT_TRAIN_ACCURACY = Gauge("fl_client_train_r2","Client training R²",["client_id"],)
+CLIENT_TEST_ACCURACY = Gauge("fl_client_test_r2","Client testing R²",["client_id"],)
 CLIENT_LOSS = Gauge("fl_client_loss","Client loss (MSE)",["client_id"],)
+CLIENT_TRAIN_F1 = Gauge("fl_client_train_f1","Client training F1-score",["client_id"],)
+CLIENT_TEST_F1 = Gauge("fl_client_test_f1","Client testing F1-score",["client_id"],)
 
 CLIENT_CPU = Gauge("fl_client_cpu_fit_percent", "CPU Percent during fit", ["client_id"])
 CLIENT_CPU_TIME = Gauge("fl_client_cpu_time_usage", "CPU Time Usage", ["client_id"])
 
 CLIENT_MEMORY = Gauge("fl_client_memory_fit_mb", "Memory MB change during fit", ["client_id"])
-
 # Global storage for client metrics (to pass to analytics)
 _current_round_client_metrics: Dict[str, Dict] = {}
 
@@ -166,16 +167,16 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Dict[str, Scalar]:
         if cid is not None:
             client_influx_fields = {}
 
-            if "train_r_squared" in client_metrics:
-                CLIENT_TRAIN_R2.labels(client_id=str(cid)).set(
-                    float(client_metrics["train_r_squared"])
+            if "train_accuracy" in client_metrics:
+                CLIENT_TRAIN_ACCURACY.labels(client_id=str(cid)).set(
+                    float(client_metrics["train_accuracy"])
                 )
-                client_influx_fields["train_r2"] = float(client_metrics["train_r_squared"])
-            if "test_r_squared" in client_metrics:
-                CLIENT_TEST_R2.labels(client_id=str(cid)).set(
-                    float(client_metrics["test_r_squared"])
+                client_influx_fields["train_accuracy"] = float(client_metrics["train_accuracy"])
+            if "test_accuracy" in client_metrics:
+                CLIENT_TEST_ACCURACY.labels(client_id=str(cid)).set(
+                    float(client_metrics["test_accuracy"])
                 )
-                client_influx_fields["test_r2"] = float(client_metrics["test_r_squared"])
+                client_influx_fields["test_accuracy"] = float(client_metrics["test_accuracy"])
             if "loss" in client_metrics:
                 CLIENT_LOSS.labels(client_id=str(cid)).set(
                     float(client_metrics["loss"])
@@ -193,6 +194,18 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Dict[str, Scalar]:
                 CLIENT_CPU_TIME.labels(client_id=str(cid)).set(client_metrics["cpu_time_sec"])
                 client_influx_fields["cpu_time_sec"] = float(client_metrics["cpu_time_sec"])
 
+            if "train_f1" in client_metrics:
+                CLIENT_TRAIN_F1.labels(client_id=str(cid)).set(
+                    float(client_metrics["train_f1"])
+                )
+                client_influx_fields["train_f1"] = float(client_metrics["train_f1"])
+            if "test_f1" in client_metrics:
+                CLIENT_TEST_F1.labels(client_id=str(cid)).set(
+                    float(client_metrics["test_f1"])
+                )
+                client_influx_fields["test_f1"] = float(client_metrics["test_f1"])
+
+
             # Write client metrics to InfluxDB
             if client_influx_fields:
                 write_to_influxdb(
@@ -204,34 +217,46 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Dict[str, Scalar]:
                 _current_round_client_metrics[str(cid)] = client_influx_fields.copy()
 
         # Add weighted sums for aggregation
-        if "train_r_squared" in client_metrics:
-            sum_train_r2 += client_metrics["train_r_squared"] * n_samples
-        if "test_r_squared" in client_metrics:
-            sum_test_r2 += client_metrics["test_r_squared"] * n_samples
+        if "train_accuracy" in client_metrics:
+            sum_train_r2 += client_metrics["train_accuracy"] * n_samples
+        if "test_accuracy" in client_metrics:
+            sum_test_r2 += client_metrics["test_accuracy"] * n_samples
+        
+        if"train_f1" in client_metrics:
+            sum_train_f1 += client_metrics["train_f1"] * n_samples
+        if "test_f1" in client_metrics:
+            sum_test_f1 += client_metrics["test_f1"] * n_samples
+
         if "loss" in client_metrics:
             sum_loss += client_metrics["loss"] * n_samples
-
+            
     # Compute aggregated averages
     if stage == "fit":
         aggregated = {
-            "train_r_squared": sum_train_r2 / total_samples,
-
+            "train_accuracy": sum_train_r2 / total_samples,
+            "train_f1": sum_train_f1 / total_samples,
+           
         }
-        SERVER_AGG_TRAIN_R2.set(aggregated["train_r_squared"])
+        SERVER_AGG_TRAIN_ACCURACY.set(aggregated["train_accuracy"])
+        SERVER_AGG_TRAIN_F1.set(aggregated["train_f1"])
 
         # Write aggregated fit metrics to InfluxDB
         write_to_influxdb(
             "fl_server_metrics",
-            {"aggregated_train_r2": aggregated["train_r_squared"]},
+            {"aggregated_train_accuracy": aggregated["train_accuracy"]},
+            {"aggregated_train_f1": aggregated["train_f1"]},
             tags={"round": str(current_round), "stage": "fit"}
         )
+      
 
     else:
         aggregated = {
             "test_r_squared": sum_test_r2 / total_samples,
+            "test_f1": sum_test_f1 / total_samples,
             "loss": sum_loss / total_samples,
         }
-        SERVER_AGG_TEST_R2.set(aggregated["test_r_squared"])
+        SERVER_AGG_TEST_ACCURACY.set(aggregated["test_r_squared"])
+        SERVER_AGG_TEST_F1.set(aggregated["test_f1"])
         SERVER_AGG_LOSS.set(aggregated["loss"])
 
         # Write aggregated eval metrics to InfluxDB
@@ -239,6 +264,7 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Dict[str, Scalar]:
             "fl_server_metrics",
             {
                 "aggregated_test_r2": aggregated["test_r_squared"],
+                "aggregated_test_f1": aggregated["test_f1"],
                 "aggregated_loss": aggregated["loss"]
             },
             tags={"round": str(current_round), "stage": "evaluate"}
@@ -255,17 +281,17 @@ def evaluate_fn(server_round, parameters, config):
     loss, metrics = central_evaluate(server_round, parameters, config)
 
     # NOW you have the values right here:
-    test_r2 = metrics.get("r2")
+    acc = metrics["accuracy"]
 
     print("[SERVER] Central evaluation:", metrics)
-    SERVER_CENTRAL_EVAL_R2.set(test_r2)
+    SERVER_CENTRAL_EVAL_ACCURACY.set(acc)
     SERVER_CENTRAL_EVAL_LOSS.set(loss)
 
     # Write central evaluation metrics to InfluxDB
     write_to_influxdb(
         "fl_central_evaluation",
         {
-            "r2": float(test_r2) if test_r2 is not None else 0.0,
+            "accuracy": float(acc) if acc is not None else 0.0,
             "loss": float(loss)
         },
         tags={"round": str(server_round)}
@@ -278,15 +304,15 @@ def evaluate_fn(server_round, parameters, config):
 
     # Get aggregated metrics
     aggregated_metrics = {
-        "train_r2": float(SERVER_AGG_TRAIN_R2._value.get()) if SERVER_AGG_TRAIN_R2._value.get() else 0.0,
-        "test_r2": float(SERVER_AGG_TEST_R2._value.get()) if SERVER_AGG_TEST_R2._value.get() else 0.0,
+        "train_accuracy": float(SERVER_AGG_TRAIN_ACCURACY._value.get()) if SERVER_AGG_TRAIN_ACCURACY._value.get() else 0.0,
+        "test_accuracy": float(SERVER_AGG_TEST_ACCURACY._value.get()) if SERVER_AGG_TEST_ACCURACY._value.get() else 0.0,
         "loss": float(SERVER_AGG_LOSS._value.get()) if SERVER_AGG_LOSS._value.get() else 0.0
     }
 
     # Analyze round
     analysis = analytics.analyze_round(
         round_num=server_round,
-        central_r2=float(test_r2) if test_r2 else 0.0,
+        central_r2=float(acc) if acc else 0.0,
         central_loss=float(loss),
         client_metrics=_current_round_client_metrics.copy(),
         aggregated_metrics=aggregated_metrics
