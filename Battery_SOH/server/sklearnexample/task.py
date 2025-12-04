@@ -14,7 +14,7 @@ from sklearn.linear_model import LogisticRegression
 from torch import nn
 from typing import List, Tuple
 from flwr.common import ndarrays_to_parameters, parameters_to_ndarrays
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score,recall_score
 import torch
 
 
@@ -348,9 +348,15 @@ def central_evaluate(server_round: int, parameters, config) -> MetricRecord:
 
     # 4. ACCURACY CALCULATION: Compare predicted indices against true indices (y_test_int)
     accuracy = (y_pred_indices == y_test_int).mean()
+    recall = recall_score(
+            y_test_int,
+            y_pred_indices,
+            average='binary'
+        )
 
     return loss, {
         "accuracy": float(accuracy)
+        ,"recall": float(recall)
     }
 
 

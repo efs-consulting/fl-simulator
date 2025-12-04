@@ -3,7 +3,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from flwr.client import NumPyClient
 from flwr.clientapp import ClientApp
 from flwr.common import Context
-from sklearn.metrics import log_loss
+from sklearn.metrics import log_loss , f1_score , recall_score
 import numpy as np
 import os
 from prometheus_client import start_http_server, Gauge, Counter
@@ -13,7 +13,6 @@ import psutil
 import time
 import torch
 import torch.nn as nn
-from sklearn.metrics import f1_score
 import warnings
 
 
@@ -108,6 +107,11 @@ class FlowerClient(NumPyClient):
         preds.cpu().numpy(),
         average='binary'
     )
+        recall = recall_score(
+        y_true.cpu().numpy(),
+        preds.cpu().numpy(),
+        average='binary'
+    )
         # Profiling end
         cpu_after = process.cpu_times()
         mem_after = process.memory_info().rss
@@ -123,6 +127,7 @@ class FlowerClient(NumPyClient):
                 "train_accuracy": float(accuracy),
                 "train_loss": float(loss.item()),
                 "train_f1": float(f1),
+                "train_recall": float(recall),
                 "cid": str(self.partition_id),
                 "cpu_percent_fit": float(cpu_percent),
                 "memory_mb_fit": float(mem_mb),
@@ -167,10 +172,16 @@ class FlowerClient(NumPyClient):
             pred.cpu().numpy(),
             average='binary'
                 )
+        recall = recall_score(
+            self.y_test.cpu().numpy(),
+            pred.cpu().numpy(),
+            average='binary'
+        )
 
         return (eval_loss , len(self.X_test), {
             "test_accuracy": float(accuracy),
             "test_f1": float(f1),
+            "test_recall": float(recall),
             "loss": float(eval_loss),
             "cid": str(self.partition_id),
             "stage": "evaluate",

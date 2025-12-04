@@ -124,9 +124,14 @@ SERVER_AGG_TEST_ACCURACY = Gauge("fl_server_aggregated_test_accuracy", "Aggregat
 SERVER_AGG_LOSS = Gauge("fl_server_aggregated_loss", "Aggregated test loss")
 SERVER_AGG_TRAIN_F1 = Gauge("fl_server_aggregated_train_f1", "Aggregated train F1-score")
 SERVER_AGG_TEST_F1 = Gauge("fl_server_aggregated_test_f1", "Aggregated test F1-score")
+SERVER_AGG_TRAIN_RECALL = Gauge("fl_server_aggregated_train_recall", "Aggregated train Recall")
+SERVER_AGG_TEST_RECALL = Gauge("fl_server_aggregated_test_recall", "Aggregated test Recall")
+
+
 
 SERVER_CENTRAL_EVAL_ACCURACY = Gauge("fl_server_cetral_evaluation_R2", "central evaluation r2")
 SERVER_CENTRAL_EVAL_LOSS = Gauge("fl_server_cetral_evaluation_loss", "central evaluation loss")
+SERVER_CENTRAL_EVAL_RECALL = Gauge("fl_server_cetral_evaluation_recall", "central evaluation recall")
 
 # ---- Per-client metrics (SEPARATE) ----
 CLIENT_TRAIN_ACCURACY = Gauge("fl_client_train_r2","Client training R²",["client_id"],)
@@ -134,11 +139,15 @@ CLIENT_TEST_ACCURACY = Gauge("fl_client_test_r2","Client testing R²",["client_i
 CLIENT_LOSS = Gauge("fl_client_loss","Client loss (MSE)",["client_id"],)
 CLIENT_TRAIN_F1 = Gauge("fl_client_train_f1","Client training F1-score",["client_id"],)
 CLIENT_TEST_F1 = Gauge("fl_client_test_f1","Client testing F1-score",["client_id"],)
+CLIENT_TEST_RECALL = Gauge("fl_client_test_recall","Client testing Recall",["client_id"],)
+CLIENT_TRAIN_RECALL = Gauge("fl_client_train_recall","Client training Recall",["client_id"],)
 
 CLIENT_CPU = Gauge("fl_client_cpu_fit_percent", "CPU Percent during fit", ["client_id"])
 CLIENT_CPU_TIME = Gauge("fl_client_cpu_time_usage", "CPU Time Usage", ["client_id"])
 
 CLIENT_MEMORY = Gauge("fl_client_memory_fit_mb", "Memory MB change during fit", ["client_id"])
+
+
 # Global storage for client metrics (to pass to analytics)
 _current_round_client_metrics: Dict[str, Dict] = {}
 
@@ -204,7 +213,16 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Dict[str, Scalar]:
                     float(client_metrics["test_f1"])
                 )
                 client_influx_fields["test_f1"] = float(client_metrics["test_f1"])
-
+            if "train_recall" in client_metrics:
+                CLIENT_TRAIN_RECALL.labels(client_id=str(cid)).set(
+                    float(client_metrics["train_recall"])
+                )
+                client_influx_fields["train_recall"] = float(client_metrics["train_recall"])
+            if "test_recall" in client_metrics:
+                CLIENT_TEST_RECALL.labels(client_id=str(cid)).set(
+                    float(client_metrics["test_recall"])
+                )
+                client_influx_fields["test_recall"] = float(client_metrics["test_recall"])
 
             # Write client metrics to InfluxDB
             if client_influx_fields:
@@ -227,6 +245,11 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Dict[str, Scalar]:
         if "test_f1" in client_metrics:
             sum_test_f1 += client_metrics["test_f1"] * n_samples
 
+        if "train_recall" in client_metrics:
+            sum_train_recall += client_metrics["train_recall"] * n_samples
+        if "test_recall" in client_metrics:
+            sum_test_recall += client_metrics["test_recall"] * n_samples    
+
         if "loss" in client_metrics:
             sum_loss += client_metrics["loss"] * n_samples
             
@@ -235,16 +258,20 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Dict[str, Scalar]:
         aggregated = {
             "train_accuracy": sum_train_r2 / total_samples,
             "train_f1": sum_train_f1 / total_samples,
+            "train_recall": sum_train_recall / total_samples,
+
            
         }
         SERVER_AGG_TRAIN_ACCURACY.set(aggregated["train_accuracy"])
         SERVER_AGG_TRAIN_F1.set(aggregated["train_f1"])
+        SERVER_AGG_TRAIN_RECALL.set(aggregated["train_recall"])
 
         # Write aggregated fit metrics to InfluxDB
         write_to_influxdb(
             "fl_server_metrics",
             {"aggregated_train_accuracy": aggregated["train_accuracy"]},
             {"aggregated_train_f1": aggregated["train_f1"]},
+            {"aggregated_train_recall": aggregated["train_recall"]},
             tags={"round": str(current_round), "stage": "fit"}
         )
       
@@ -254,10 +281,14 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Dict[str, Scalar]:
             "test_r_squared": sum_test_r2 / total_samples,
             "test_f1": sum_test_f1 / total_samples,
             "loss": sum_loss / total_samples,
+            "test_recall": sum_test_recall / total_samples,
+
         }
         SERVER_AGG_TEST_ACCURACY.set(aggregated["test_r_squared"])
         SERVER_AGG_TEST_F1.set(aggregated["test_f1"])
         SERVER_AGG_LOSS.set(aggregated["loss"])
+        SERVER_AGG_TEST_RECALL.set(aggregated["test_recall"])
+
 
         # Write aggregated eval metrics to InfluxDB
         write_to_influxdb(
@@ -266,6 +297,7 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Dict[str, Scalar]:
                 "aggregated_test_r2": aggregated["test_r_squared"],
                 "aggregated_test_f1": aggregated["test_f1"],
                 "aggregated_loss": aggregated["loss"]
+                ,"aggregated_test_recall": aggregated["test_recall"]
             },
             tags={"round": str(current_round), "stage": "evaluate"}
         )
@@ -282,17 +314,22 @@ def evaluate_fn(server_round, parameters, config):
 
     # NOW you have the values right here:
     acc = metrics["accuracy"]
+    recall = metrics["recall"]
 
     print("[SERVER] Central evaluation:", metrics)
     SERVER_CENTRAL_EVAL_ACCURACY.set(acc)
     SERVER_CENTRAL_EVAL_LOSS.set(loss)
+    SERVER_CENTRAL_EVAL_RECALL.set(recall)
+
+
 
     # Write central evaluation metrics to InfluxDB
     write_to_influxdb(
         "fl_central_evaluation",
         {
             "accuracy": float(acc) if acc is not None else 0.0,
-            "loss": float(loss)
+            "loss": float(loss),
+            "recall": float(recall) if recall is not None else 0.0
         },
         tags={"round": str(server_round)}
     )
