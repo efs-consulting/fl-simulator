@@ -343,14 +343,17 @@ def evaluate_fn(server_round, parameters, config):
     aggregated_metrics = {
         "train_accuracy": float(SERVER_AGG_TRAIN_ACCURACY._value.get()) if SERVER_AGG_TRAIN_ACCURACY._value.get() else 0.0,
         "test_accuracy": float(SERVER_AGG_TEST_ACCURACY._value.get()) if SERVER_AGG_TEST_ACCURACY._value.get() else 0.0,
+        "train_recall": float(SERVER_AGG_TRAIN_RECALL._value.get()) if SERVER_AGG_TRAIN_RECALL._value.get() else 0.0,
+        "test_recall": float(SERVER_AGG_TEST_RECALL._value.get()) if SERVER_AGG_TEST_RECALL._value.get() else 0.0,
         "loss": float(SERVER_AGG_LOSS._value.get()) if SERVER_AGG_LOSS._value.get() else 0.0
     }
 
     # Analyze round
     analysis = analytics.analyze_round(
         round_num=server_round,
-        central_r2=float(acc) if acc else 0.0,
+        central_accuracy=float(acc) if acc else 0.0,
         central_loss=float(loss),
+        central_recall =float(recall) if recall else 0.0,
         client_metrics=_current_round_client_metrics.copy(),
         aggregated_metrics=aggregated_metrics
     )
