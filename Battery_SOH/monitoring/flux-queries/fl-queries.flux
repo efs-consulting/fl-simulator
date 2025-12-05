@@ -1,5 +1,6 @@
 // FL Simulator Flux Queries for InfluxDB
 // Created: 2025-11-29
+// Updated: 2025-12-05 - Accuracy & Recall metrics (removed r2)
 // These queries can be used in Grafana or directly in InfluxDB
 
 // ============================================
@@ -14,43 +15,110 @@ currentRoundMetrics = from(bucket: "fl-metrics")
   |> last()
   |> pivot(rowKey: ["_time"], columnKey: ["_measurement"], valueColumn: "_value")
 
-// Query: Convergence Curve - Aggregated R² Over Time
+// Query: Convergence Curve - Aggregated Train Accuracy Over Time
 // Use: Time series panel showing training progress
-convergenceR2 = from(bucket: "fl-metrics")
+convergenceTrainAccuracy = from(bucket: "fl-metrics")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "fl_server_aggregated_train_r2")
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_train_accuracy")
   |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
-  |> yield(name: "train_r2")
+  |> yield(name: "train_accuracy")
+
+// Query: Convergence Curve - Aggregated Train Recall Over Time
+// Use: Time series panel showing recall improvement
+convergenceTrainRecall = from(bucket: "fl-metrics")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_train_recall")
+  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+  |> yield(name: "train_recall")
+
+// Query: Convergence Curve - Aggregated Test Accuracy Over Time
+// Use: Time series panel showing test accuracy
+convergenceTestAccuracy = from(bucket: "fl-metrics")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_test_accuracy")
+  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+  |> yield(name: "test_accuracy")
+
+// Query: Convergence Curve - Aggregated Test Recall Over Time
+// Use: Time series panel showing test recall
+convergenceTestRecall = from(bucket: "fl-metrics")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_test_recall")
+  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+  |> yield(name: "test_recall")
 
 // Query: Convergence Curve - Aggregated Loss Over Time
 // Use: Time series panel showing loss reduction
 convergenceLoss = from(bucket: "fl-metrics")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "fl_server_aggregated_loss")
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_loss")
   |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
   |> yield(name: "loss")
 
-// Query: Central Evaluation Progress
-// Use: Separate panel for server-side evaluation
-centralEvaluation = from(bucket: "fl-metrics")
+// Query: Central Evaluation Accuracy
+// Use: Separate panel for server-side evaluation accuracy
+centralEvalAccuracy = from(bucket: "fl-metrics")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] =~ /fl_server_cetral_evaluation_.*/)
-  |> pivot(rowKey: ["_time"], columnKey: ["_measurement"], valueColumn: "_value")
-  |> yield(name: "central_eval")
+  |> filter(fn: (r) => r["_measurement"] == "fl_central_evaluation" and r["_field"] == "accuracy")
+  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+  |> yield(name: "central_eval_accuracy")
+
+// Query: Central Evaluation Recall
+// Use: Separate panel for server-side evaluation recall
+centralEvalRecall = from(bucket: "fl-metrics")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "fl_central_evaluation" and r["_field"] == "recall")
+  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+  |> yield(name: "central_eval_recall")
+
+// Query: Central Evaluation Loss
+// Use: Separate panel for server-side evaluation loss
+centralEvalLoss = from(bucket: "fl-metrics")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "fl_central_evaluation" and r["_field"] == "loss")
+  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+  |> yield(name: "central_eval_loss")
 
 
 // ============================================
 // 2. PER-CLIENT PERFORMANCE QUERIES
 // ============================================
 
-// Query: All Clients R² Comparison
+// Query: All Clients Train Accuracy Comparison
 // Use: Multi-line chart comparing client performance
-clientR2Comparison = from(bucket: "fl-metrics")
+clientTrainAccuracyComparison = from(bucket: "fl-metrics")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "fl_client_train_r2")
+  |> filter(fn: (r) => r["_measurement"] == "fl_client_metrics" and r["_field"] == "train_accuracy")
   |> group(columns: ["client_id"])
   |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
-  |> yield(name: "client_r2")
+  |> yield(name: "client_train_accuracy")
+
+// Query: All Clients Train Recall Comparison
+// Use: Multi-line chart comparing client recall
+clientTrainRecallComparison = from(bucket: "fl-metrics")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "fl_client_metrics" and r["_field"] == "train_recall")
+  |> group(columns: ["client_id"])
+  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+  |> yield(name: "client_train_recall")
+
+// Query: All Clients Test Accuracy Comparison
+// Use: Multi-line chart comparing test accuracy
+clientTestAccuracyComparison = from(bucket: "fl-metrics")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "fl_client_metrics" and r["_field"] == "test_accuracy")
+  |> group(columns: ["client_id"])
+  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+  |> yield(name: "client_test_accuracy")
+
+// Query: All Clients Test Recall Comparison
+// Use: Multi-line chart comparing test recall
+clientTestRecallComparison = from(bucket: "fl-metrics")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "fl_client_metrics" and r["_field"] == "test_recall")
+  |> group(columns: ["client_id"])
+  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+  |> yield(name: "client_test_recall")
 
 // Query: Single Client Detailed Metrics
 // Use: Detailed view when filtering by client_id variable
@@ -58,25 +126,25 @@ clientR2Comparison = from(bucket: "fl-metrics")
 singleClientMetrics = from(bucket: "fl-metrics")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
   |> filter(fn: (r) => r["client_id"] == "${client_id}")
-  |> filter(fn: (r) => r["_measurement"] =~ /fl_client_.*/)
-  |> pivot(rowKey: ["_time"], columnKey: ["_measurement"], valueColumn: "_value")
+  |> filter(fn: (r) => r["_measurement"] == "fl_client_metrics")
+  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
 
 // Query: Client Resource Usage Heatmap
 // Use: Heatmap panel showing CPU/memory across clients
 clientResourceHeatmap = from(bucket: "fl-metrics")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
   |> filter(fn: (r) =>
-      r["_measurement"] == "fl_client_cpu_fit_percent" or
-      r["_measurement"] == "fl_client_memory_fit_mb"
+      (r["_measurement"] == "fl_client_metrics" and r["_field"] == "cpu_percent") or
+      (r["_measurement"] == "fl_client_metrics" and r["_field"] == "memory_mb")
   )
-  |> group(columns: ["client_id", "_measurement"])
+  |> group(columns: ["client_id", "_field"])
   |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
 
-// Query: Straggler Detection - Clients Above 2x Mean Latency
+// Query: Straggler Detection - Clients Above 2x Mean CPU Time
 // Use: Table or alert panel
 stragglerDetection = from(bucket: "fl-metrics")
   |> range(start: -10m)
-  |> filter(fn: (r) => r["_measurement"] == "fl_client_cpu_time_usage")
+  |> filter(fn: (r) => r["_measurement"] == "fl_client_metrics" and r["_field"] == "cpu_time_sec")
   |> group(columns: ["client_id"])
   |> mean()
   |> map(fn: (r) => ({
@@ -84,11 +152,12 @@ stragglerDetection = from(bucket: "fl-metrics")
       is_straggler: r._value > 2.0 * (
         from(bucket: "fl-metrics")
           |> range(start: -10m)
-          |> filter(fn: (r) => r["_measurement"] == "fl_client_cpu_time_usage")
+          |> filter(fn: (r) => r["_measurement"] == "fl_client_metrics" and r["_field"] == "cpu_time_sec")
           |> mean()
           |> findRecord(fn: (key) => true, idx: 0)
       )._value
   }))
+  |> filter(fn: (r) => r.is_straggler == true)
 
 
 // ============================================
@@ -99,7 +168,7 @@ stragglerDetection = from(bucket: "fl-metrics")
 // Use: Table showing progression across rounds
 metricsByRound = from(bucket: "fl-metrics")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "fl_server_round")
+  |> filter(fn: (r) => r["_measurement"] == "fl_training_progress")
   |> group()
   |> sort(columns: ["_time"])
   |> map(fn: (r) => ({
@@ -111,7 +180,7 @@ metricsByRound = from(bucket: "fl-metrics")
 // Use: Bar chart showing time per round
 roundDuration = from(bucket: "fl-metrics")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "fl_server_round")
+  |> filter(fn: (r) => r["_measurement"] == "fl_training_progress")
   |> elapsed(unit: 1s)
   |> filter(fn: (r) => r.elapsed > 0)
   |> yield(name: "round_duration")
@@ -120,7 +189,7 @@ roundDuration = from(bucket: "fl-metrics")
 // Use: Stacked bar chart showing active clients
 clientParticipation = from(bucket: "fl-metrics")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "fl_client_train_r2")
+  |> filter(fn: (r) => r["_measurement"] == "fl_client_metrics")
   |> group(columns: ["_time"])
   |> count()
   |> yield(name: "active_clients")
@@ -130,38 +199,83 @@ clientParticipation = from(bucket: "fl-metrics")
 // 4. ADVANCED ANALYSIS QUERIES
 // ============================================
 
-// Query: Training Convergence Rate (Derivative of Loss)
+// Query: Training Convergence Rate - Accuracy Improvement
 // Use: Detect when training is stagnating
-convergenceRate = from(bucket: "fl-metrics")
+convergenceRateAccuracy = from(bucket: "fl-metrics")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "fl_server_aggregated_loss")
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_train_accuracy")
+  |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
+  |> derivative(unit: 1m, nonNegative: false)
+  |> yield(name: "accuracy_derivative")
+
+// Query: Training Convergence Rate - Recall Improvement
+// Use: Detect when recall is stagnating
+convergenceRateRecall = from(bucket: "fl-metrics")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_train_recall")
+  |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
+  |> derivative(unit: 1m, nonNegative: false)
+  |> yield(name: "recall_derivative")
+
+// Query: Training Convergence Rate (Derivative of Loss)
+// Use: Detect when loss improvement is stagnating
+convergenceRateLoss = from(bucket: "fl-metrics")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_loss")
   |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
   |> derivative(unit: 1m, nonNegative: false)
   |> yield(name: "loss_derivative")
 
-// Query: Model Quality Over Time (Moving Average of R²)
+// Query: Model Quality Over Time (Moving Average of Train Accuracy)
 // Use: Smoothed convergence visualization
-smoothedR2 = from(bucket: "fl-metrics")
+smoothedTrainAccuracy = from(bucket: "fl-metrics")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "fl_server_aggregated_train_r2")
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_train_accuracy")
   |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)
   |> movingAverage(n: 5)
-  |> yield(name: "smoothed_r2")
+  |> yield(name: "smoothed_train_accuracy")
 
-// Query: Client Performance Distribution (Percentiles)
+// Query: Model Quality Over Time (Moving Average of Train Recall)
+// Use: Smoothed recall convergence visualization
+smoothedTrainRecall = from(bucket: "fl-metrics")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_train_recall")
+  |> aggregateWindow(every: 30s, fn: mean, createEmpty: false)
+  |> movingAverage(n: 5)
+  |> yield(name: "smoothed_train_recall")
+
+// Query: Client Performance Distribution (Percentiles) - Accuracy
 // Use: Box plot or distribution chart
-clientPerformanceDistribution = from(bucket: "fl-metrics")
+clientAccuracyDistribution = from(bucket: "fl-metrics")
   |> range(start: -1h)
-  |> filter(fn: (r) => r["_measurement"] == "fl_client_train_r2")
+  |> filter(fn: (r) => r["_measurement"] == "fl_client_metrics" and r["_field"] == "train_accuracy")
   |> group()
   |> quantile(q: 0.5, method: "estimate_tdigest")
-  |> yield(name: "median_r2")
+  |> yield(name: "median_accuracy")
+
+// Query: Client Performance Distribution (Percentiles) - Recall
+// Use: Box plot or distribution chart
+clientRecallDistribution = from(bucket: "fl-metrics")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r["_measurement"] == "fl_client_metrics" and r["_field"] == "train_recall")
+  |> group()
+  |> quantile(q: 0.5, method: "estimate_tdigest")
+  |> yield(name: "median_recall")
 
 // Query: Experiment Comparison (when tagged with experiment_id)
 // Use: Overlay multiple experiment runs
-experimentComparison = from(bucket: "fl-metrics")
+experimentComparisonAccuracy = from(bucket: "fl-metrics")
   |> range(start: -7d)
-  |> filter(fn: (r) => r["_measurement"] == "fl_server_aggregated_train_r2")
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_train_accuracy")
+  |> filter(fn: (r) => r["experiment_id"] == "${experiment_id}")
+  |> group(columns: ["experiment_id"])
+  |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
+
+// Query: Experiment Comparison - Recall
+// Use: Overlay multiple experiment runs for recall
+experimentComparisonRecall = from(bucket: "fl-metrics")
+  |> range(start: -7d)
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_train_recall")
   |> filter(fn: (r) => r["experiment_id"] == "${experiment_id}")
   |> group(columns: ["experiment_id"])
   |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
@@ -199,7 +313,7 @@ dailyArchive = from(bucket: "fl-metrics-hourly")
 // Use: Alert trigger
 lossSpikeDetection = from(bucket: "fl-metrics")
   |> range(start: -5m)
-  |> filter(fn: (r) => r["_measurement"] == "fl_server_aggregated_loss")
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_loss")
   |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
   |> difference()
   |> map(fn: (r) => ({
@@ -207,18 +321,27 @@ lossSpikeDetection = from(bucket: "fl-metrics")
       spike_detected: r._value > 0.5 * (
         from(bucket: "fl-metrics")
           |> range(start: -10m, stop: -5m)
-          |> filter(fn: (r) => r["_measurement"] == "fl_server_aggregated_loss")
+          |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_loss")
           |> mean()
           |> findRecord(fn: (key) => true, idx: 0)
       )._value
   }))
   |> filter(fn: (r) => r.spike_detected == true)
 
-// Query: R² Drop Detection
-// Use: Alert when model quality degrades
-r2DropDetection = from(bucket: "fl-metrics")
+// Query: Accuracy Drop Detection
+// Use: Alert when model accuracy degrades
+accuracyDropDetection = from(bucket: "fl-metrics")
   |> range(start: -5m)
-  |> filter(fn: (r) => r["_measurement"] == "fl_server_aggregated_train_r2")
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_train_accuracy")
   |> last()
   |> filter(fn: (r) => r._value < 0.5)
-  |> yield(name: "r2_below_threshold")
+  |> yield(name: "accuracy_below_threshold")
+
+// Query: Recall Drop Detection
+// Use: Alert when recall degrades below threshold
+recallDropDetection = from(bucket: "fl-metrics")
+  |> range(start: -5m)
+  |> filter(fn: (r) => r["_measurement"] == "fl_server_metrics" and r["_field"] == "aggregated_train_recall")
+  |> last()
+  |> filter(fn: (r) => r._value < 0.5)
+  |> yield(name: "recall_below_threshold")

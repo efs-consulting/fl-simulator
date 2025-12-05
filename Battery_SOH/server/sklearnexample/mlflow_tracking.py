@@ -28,7 +28,7 @@ class FLExperimentTracker:
 
     Tracks:
     - FL hyperparameters (rounds, clients, strategy)
-    - Per-round metrics (aggregated R², loss)
+    - Per-round metrics (aggregated accuracy, recall, loss)
     - Per-client metrics
     - Model artifacts (final weights)
     - Training duration and resource usage
@@ -40,14 +40,6 @@ class FLExperimentTracker:
         tracking_uri: Optional[str] = None,
         artifact_location: Optional[str] = None
     ):
-        """
-        Initialize the FL experiment tracker.
-
-        Args:
-            experiment_name: Name of the MLflow experiment
-            tracking_uri: MLflow tracking server URI (default: local ./mlruns)
-            artifact_location: Where to store artifacts
-        """
         self.experiment_name = experiment_name
         self.enabled = MLFLOW_AVAILABLE and not os.getenv("DISABLE_MLFLOW")
 
@@ -61,10 +53,8 @@ class FLExperimentTracker:
         elif os.getenv("MLFLOW_TRACKING_URI"):
             mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
         else:
-            # Default to local tracking
             mlflow.set_tracking_uri("file:./mlruns")
 
-        # Set or create experiment
         mlflow.set_experiment(experiment_name)
         self.client = MlflowClient()
 
@@ -77,27 +67,15 @@ class FLExperimentTracker:
         run_name: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None
     ) -> Optional[str]:
-        """
-        Start a new MLflow run for an FL training session.
-
-        Args:
-            run_name: Optional name for the run
-            tags: Optional tags to add to the run
-
-        Returns:
-            Run ID if successful, None otherwise
-        """
         if not self.enabled:
             return None
 
         if run_name is None:
             run_name = f"FL-Run-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
-        # Start MLflow run
         run = mlflow.start_run(run_name=run_name)
         self.run_id = run.info.run_id
 
-        # Add default tags
         default_tags = {
             "framework": "flower",
             "task": "battery-soh-prediction",
@@ -121,17 +99,6 @@ class FLExperimentTracker:
         learning_rate: float = 1e-5,
         **extra_params
     ):
-        """
-        Log FL configuration parameters.
-
-        Args:
-            num_rounds: Number of FL rounds
-            min_clients: Minimum clients per round
-            penalty: Regularization type
-            local_epochs: Local training epochs per round
-            learning_rate: Learning rate
-            **extra_params: Additional parameters to log
-        """
         if not self.enabled:
             return
 
@@ -150,10 +117,15 @@ class FLExperimentTracker:
     def log_round_metrics(
         self,
         round_num: int,
-        aggregated_train_r2: float,
-        aggregated_test_r2: Optional[float] = None,
+        aggregated_train_accuracy: float,
+        aggregated_train_recall: Optional[float] = None,
+        aggregated_train_f1: Optional[float] = None,
+        aggregated_test_accuracy: Optional[float] = None,
+        aggregated_test_recall: Optional[float] = None,
+        aggregated_test_f1: Optional[float] = None,
         aggregated_loss: Optional[float] = None,
-        central_eval_r2: Optional[float] = None,
+        central_eval_accuracy: Optional[float] = None,
+        central_eval_recall: Optional[float] = None,
         central_eval_loss: Optional[float] = None,
         num_clients: int = 0,
         duration_sec: Optional[float] = None
@@ -163,10 +135,15 @@ class FLExperimentTracker:
 
         Args:
             round_num: Current round number
-            aggregated_train_r2: Weighted average training R²
-            aggregated_test_r2: Weighted average test R²
+            aggregated_train_accuracy: Weighted average training accuracy
+            aggregated_train_recall: Weighted average training recall
+            aggregated_train_f1: Weighted average training F1
+            aggregated_test_accuracy: Weighted average test accuracy
+            aggregated_test_recall: Weighted average test recall
+            aggregated_test_f1: Weighted average test F1
             aggregated_loss: Weighted average loss
-            central_eval_r2: Central evaluation R²
+            central_eval_accuracy: Central evaluation accuracy
+            central_eval_recall: Central evaluation recall
             central_eval_loss: Central evaluation loss
             num_clients: Number of participating clients
             duration_sec: Round duration in seconds
@@ -176,15 +153,25 @@ class FLExperimentTracker:
 
         metrics = {
             "round": round_num,
-            "aggregated_train_r2": aggregated_train_r2,
+            "aggregated_train_accuracy": aggregated_train_accuracy,
         }
 
-        if aggregated_test_r2 is not None:
-            metrics["aggregated_test_r2"] = aggregated_test_r2
+        if aggregated_train_recall is not None:
+            metrics["aggregated_train_recall"] = aggregated_train_recall
+        if aggregated_train_f1 is not None:
+            metrics["aggregated_train_f1"] = aggregated_train_f1
+        if aggregated_test_accuracy is not None:
+            metrics["aggregated_test_accuracy"] = aggregated_test_accuracy
+        if aggregated_test_recall is not None:
+            metrics["aggregated_test_recall"] = aggregated_test_recall
+        if aggregated_test_f1 is not None:
+            metrics["aggregated_test_f1"] = aggregated_test_f1
         if aggregated_loss is not None:
             metrics["aggregated_loss"] = aggregated_loss
-        if central_eval_r2 is not None:
-            metrics["central_eval_r2"] = central_eval_r2
+        if central_eval_accuracy is not None:
+            metrics["central_eval_accuracy"] = central_eval_accuracy
+        if central_eval_recall is not None:
+            metrics["central_eval_recall"] = central_eval_recall
         if central_eval_loss is not None:
             metrics["central_eval_loss"] = central_eval_loss
         if num_clients > 0:
@@ -197,15 +184,18 @@ class FLExperimentTracker:
             if key != "round":
                 mlflow.log_metric(key, value, step=round_num)
 
-        # Store locally for summary
         self.round_metrics.append(metrics)
 
     def log_client_metrics(
         self,
         client_id: str,
         round_num: int,
-        train_r2: float,
-        test_r2: Optional[float] = None,
+        train_accuracy: float,
+        train_recall: Optional[float] = None,
+        train_f1: Optional[float] = None,
+        test_accuracy: Optional[float] = None,
+        test_recall: Optional[float] = None,
+        test_f1: Optional[float] = None,
         loss: Optional[float] = None,
         cpu_percent: Optional[float] = None,
         memory_mb: Optional[float] = None,
@@ -217,8 +207,12 @@ class FLExperimentTracker:
         Args:
             client_id: Client identifier
             round_num: Current round number
-            train_r2: Client's training R²
-            test_r2: Client's test R²
+            train_accuracy: Client's training accuracy
+            train_recall: Client's training recall
+            train_f1: Client's training F1
+            test_accuracy: Client's test accuracy
+            test_recall: Client's test recall
+            test_f1: Client's test F1
             loss: Client's loss
             cpu_percent: CPU usage during training
             memory_mb: Memory usage in MB
@@ -229,11 +223,19 @@ class FLExperimentTracker:
 
         metrics = {
             "round": round_num,
-            "train_r2": train_r2,
+            "train_accuracy": train_accuracy,
         }
 
-        if test_r2 is not None:
-            metrics["test_r2"] = test_r2
+        if train_recall is not None:
+            metrics["train_recall"] = train_recall
+        if train_f1 is not None:
+            metrics["train_f1"] = train_f1
+        if test_accuracy is not None:
+            metrics["test_accuracy"] = test_accuracy
+        if test_recall is not None:
+            metrics["test_recall"] = test_recall
+        if test_f1 is not None:
+            metrics["test_f1"] = test_f1
         if loss is not None:
             metrics["loss"] = loss
         if cpu_percent is not None:
@@ -243,12 +245,10 @@ class FLExperimentTracker:
         if samples is not None:
             metrics["samples"] = samples
 
-        # Log with client-specific metric names
         for key, value in metrics.items():
             if key != "round":
                 mlflow.log_metric(f"client_{client_id}_{key}", value, step=round_num)
 
-        # Store locally
         if client_id not in self.client_metrics:
             self.client_metrics[client_id] = []
         self.client_metrics[client_id].append(metrics)
@@ -258,13 +258,6 @@ class FLExperimentTracker:
         model_path: str,
         artifact_name: str = "final_model"
     ):
-        """
-        Log model weights as an artifact.
-
-        Args:
-            model_path: Path to the model file (.npz)
-            artifact_name: Name for the artifact
-        """
         if not self.enabled:
             return
 
@@ -275,40 +268,42 @@ class FLExperimentTracker:
             print(f"Model file not found: {model_path}")
 
     def log_training_summary(self):
-        """
-        Log a summary of the training session.
-        """
         if not self.enabled or not self.round_metrics:
             return
 
-        # Calculate summary statistics
-        train_r2_values = [m["aggregated_train_r2"] for m in self.round_metrics]
+        train_acc_values = [m["aggregated_train_accuracy"] for m in self.round_metrics if "aggregated_train_accuracy" in m]
+        train_rec_values = [m.get("aggregated_train_recall") for m in self.round_metrics if m.get("aggregated_train_recall") is not None]
 
         summary = {
             "total_rounds": len(self.round_metrics),
-            "final_train_r2": train_r2_values[-1],
-            "best_train_r2": max(train_r2_values),
-            "avg_train_r2": np.mean(train_r2_values),
+            "final_train_accuracy": train_acc_values[-1] if train_acc_values else None,
+            "best_train_accuracy": max(train_acc_values) if train_acc_values else None,
+            "avg_train_accuracy": np.mean(train_acc_values) if train_acc_values else None,
+            "final_train_recall": train_rec_values[-1] if train_rec_values else None,
+            "best_train_recall": max(train_rec_values) if train_rec_values else None,
+            "avg_train_recall": np.mean(train_rec_values) if train_rec_values else None,
             "total_clients": len(self.client_metrics),
         }
 
-        # Log loss if available
-        loss_values = [m.get("aggregated_loss") for m in self.round_metrics if m.get("aggregated_loss")]
+        loss_values = [m.get("aggregated_loss") for m in self.round_metrics if m.get("aggregated_loss") is not None]
         if loss_values:
             summary["final_loss"] = loss_values[-1]
             summary["best_loss"] = min(loss_values)
             summary["avg_loss"] = np.mean(loss_values)
 
-        # Log central eval if available
-        central_r2_values = [m.get("central_eval_r2") for m in self.round_metrics if m.get("central_eval_r2")]
-        if central_r2_values:
-            summary["final_central_r2"] = central_r2_values[-1]
-            summary["best_central_r2"] = max(central_r2_values)
+        central_acc_values = [m.get("central_eval_accuracy") for m in self.round_metrics if m.get("central_eval_accuracy") is not None]
+        if central_acc_values:
+            summary["final_central_accuracy"] = central_acc_values[-1]
+            summary["best_central_accuracy"] = max(central_acc_values)
+
+        central_rec_values = [m.get("central_eval_recall") for m in self.round_metrics if m.get("central_eval_recall") is not None]
+        if central_rec_values:
+            summary["final_central_recall"] = central_rec_values[-1]
+            summary["best_central_recall"] = max(central_rec_values)
 
         for key, value in summary.items():
             mlflow.log_metric(f"summary_{key}", value)
 
-        # Save detailed metrics as JSON artifact
         metrics_summary = {
             "round_metrics": self.round_metrics,
             "client_metrics": self.client_metrics,
@@ -323,23 +318,13 @@ class FLExperimentTracker:
         print(f"Training summary logged: {summary}")
 
     def end_run(self, status: str = "FINISHED"):
-        """
-        End the current MLflow run.
-
-        Args:
-            status: Run status (FINISHED, FAILED, KILLED)
-        """
         if not self.enabled:
             return
 
-        # Log final summary
         self.log_training_summary()
-
-        # End the run
         mlflow.end_run(status=status)
         print(f"MLflow run ended: {self.run_id} ({status})")
 
-        # Reset state
         self.run_id = None
         self.round_metrics = []
         self.client_metrics = {}
@@ -353,29 +338,15 @@ def get_tracker(
     experiment_name: str = "FL-Battery-SOH",
     **kwargs
 ) -> FLExperimentTracker:
-    """
-    Get or create the global FL experiment tracker.
-
-    Args:
-        experiment_name: Name of the MLflow experiment
-        **kwargs: Additional arguments for FLExperimentTracker
-
-    Returns:
-        FLExperimentTracker instance
-    """
     global _tracker
     if _tracker is None:
         _tracker = FLExperimentTracker(experiment_name, **kwargs)
     return _tracker
 
-
 # Example integration with server_app.py:
 """
-# In server_app.py, add:
-
 from sklearnexample.mlflow_tracking import get_tracker
 
-# In server_fn():
 tracker = get_tracker()
 tracker.start_run(run_name=f"FL-{num_rounds}rounds-{min_clients}clients")
 tracker.log_fl_config(
@@ -385,23 +356,33 @@ tracker.log_fl_config(
     local_epochs=5
 )
 
-# In weighted_average():
 tracker.log_round_metrics(
     round_num=server_round,
-    aggregated_train_r2=aggregated["train_r_squared"],
+    aggregated_train_accuracy=aggregated["train_accuracy"],
+    aggregated_train_recall=aggregated.get("train_recall"),
+    aggregated_train_f1=aggregated.get("train_f1"),
+    aggregated_test_accuracy=aggregated.get("test_accuracy"),
+    aggregated_test_recall=aggregated.get("test_recall"),
+    aggregated_test_f1=aggregated.get("test_f1"),
     aggregated_loss=aggregated.get("loss"),
+    central_eval_accuracy=metrics.get("accuracy"),
+    central_eval_recall=metrics.get("recall"),
+    central_eval_loss=metrics.get("loss"),
     num_clients=len(metrics)
 )
 
-# For each client in metrics:
 tracker.log_client_metrics(
     client_id=cid,
     round_num=server_round,
-    train_r2=client_metrics["train_r_squared"],
+    train_accuracy=client_metrics["train_accuracy"],
+    train_recall=client_metrics.get("train_recall"),
+    train_f1=client_metrics.get("train_f1"),
+    test_accuracy=client_metrics.get("test_accuracy"),
+    test_recall=client_metrics.get("test_recall"),
+    test_f1=client_metrics.get("test_f1"),
     loss=client_metrics.get("loss")
 )
 
-# At end of training:
 tracker.log_model_artifact("/app/model/final_model.npz")
 tracker.end_run()
 """

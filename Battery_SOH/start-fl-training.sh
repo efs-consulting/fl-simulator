@@ -169,11 +169,12 @@ check_docker
 
 case "${1:-start}" in
     start|[0-9]*)
-        start_monitoring
-        start_server
-        start_clients
-        show_status
-        show_urls
+        # start_monitoring
+        # start_server
+        # start_clients
+        # show_status
+        # show_urls
+        log "Starting FL Simulator components..."
         show_next_steps
         log "FL Simulator is ready! 🚀"
         ;;

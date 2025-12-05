@@ -10,11 +10,11 @@
 // 1. CENTRAL EVALUATION - Model Performance Over Rounds
 // ============================================================
 
-// 1a. Central Evaluation R² over time (shows model improvement)
+// 1a. Central Evaluation accuracy over time (shows model improvement)
 from(bucket: "fl-metrics")
   |> range(start: -24h)
   |> filter(fn: (r) => r._measurement == "fl_central_evaluation")
-  |> filter(fn: (r) => r._field == "r2")
+  |> filter(fn: (r) => r._field == "accuracy")
   |> sort(columns: ["_time"])
 
 // 1b. Central Evaluation Loss over time
@@ -24,7 +24,14 @@ from(bucket: "fl-metrics")
   |> filter(fn: (r) => r._field == "loss")
   |> sort(columns: ["_time"])
 
-// 1c. Central Evaluation - Both R² and Loss pivoted by round
+// 1c. Central Evaluation Loss over time
+from(bucket: "fl-metrics")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r._measurement == "fl_central_evaluation")
+  |> filter(fn: (r) => r._field == "recall")
+  |> sort(columns: ["_time"])
+
+// 1d. Central Evaluation - Both accuracy and Loss pivoted by round
 from(bucket: "fl-metrics")
   |> range(start: -24h)
   |> filter(fn: (r) => r._measurement == "fl_central_evaluation")
@@ -55,21 +62,40 @@ from(bucket: "fl-metrics")
 // 3. CLIENT METRICS - Per-Client Performance
 // ============================================================
 
-// 3a. Client Training R² by client_id
+// 3a. Client Training accuracy by client_id
 from(bucket: "fl-metrics")
   |> range(start: -24h)
   |> filter(fn: (r) => r._measurement == "fl_client_metrics")
-  |> filter(fn: (r) => r._field == "train_r2")
+  |> filter(fn: (r) => r._field == "train_accuracy")
   |> group(columns: ["client_id"])
   |> sort(columns: ["_time"])
 
-// 3b. Client Test R² by client_id
+// 3b. Client Test accuracy by client_id
 from(bucket: "fl-metrics")
   |> range(start: -24h)
   |> filter(fn: (r) => r._measurement == "fl_client_metrics")
-  |> filter(fn: (r) => r._field == "test_r2")
+  |> filter(fn: (r) => r._field == "test_accuracy")
   |> group(columns: ["client_id"])
   |> sort(columns: ["_time"])
+
+
+// 3a. Client Training accuracy by client_id
+from(bucket: "fl-metrics")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r._measurement == "fl_client_metrics")
+  |> filter(fn: (r) => r._field == "train_recall")
+  |> group(columns: ["client_id"])
+  |> sort(columns: ["_time"])
+
+// 3b. Client Test accuracy by client_id
+from(bucket: "fl-metrics")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r._measurement == "fl_client_metrics")
+  |> filter(fn: (r) => r._field == "test_recall")
+  |> group(columns: ["client_id"])
+  |> sort(columns: ["_time"])
+
+
 
 // 3c. Client Loss by client_id
 from(bucket: "fl-metrics")
@@ -107,28 +133,44 @@ from(bucket: "fl-metrics")
 // 4. SERVER AGGREGATED METRICS
 // ============================================================
 
-// 4a. Aggregated Training R² over rounds
+// 4a. Aggregated Training accuracy over rounds
 from(bucket: "fl-metrics")
   |> range(start: -24h)
   |> filter(fn: (r) => r._measurement == "fl_server_metrics")
-  |> filter(fn: (r) => r._field == "aggregated_train_r2")
+  |> filter(fn: (r) => r._field == "aggregated_train_accuracy")
   |> sort(columns: ["_time"])
 
-// 4b. Aggregated Test R² over rounds
+// 4b. Aggregated Test accuracy over rounds
 from(bucket: "fl-metrics")
   |> range(start: -24h)
   |> filter(fn: (r) => r._measurement == "fl_server_metrics")
-  |> filter(fn: (r) => r._field == "aggregated_test_r2")
+  |> filter(fn: (r) => r._field == "aggregated_test_ accuracy")
   |> sort(columns: ["_time"])
 
-// 4c. Aggregated Loss over rounds
+
+// 4c. Aggregated Training accuracy over rounds
+from(bucket: "fl-metrics")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r._measurement == "fl_server_metrics")
+  |> filter(fn: (r) => r._field == "aggregated_train_recall")
+  |> sort(columns: ["_time"])
+
+// 4d. Aggregated Test accuracy over rounds
+from(bucket: "fl-metrics")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r._measurement == "fl_server_metrics")
+  |> filter(fn: (r) => r._field == "aggregated_test_ recall")
+  |> sort(columns: ["_time"])
+
+
+// 4e. Aggregated Loss over rounds
 from(bucket: "fl-metrics")
   |> range(start: -24h)
   |> filter(fn: (r) => r._measurement == "fl_server_metrics")
   |> filter(fn: (r) => r._field == "aggregated_loss")
   |> sort(columns: ["_time"])
 
-// 4d. All server metrics by stage (fit vs evaluate)
+// 4f. All server metrics by stage (fit vs evaluate)
 from(bucket: "fl-metrics")
   |> range(start: -24h)
   |> filter(fn: (r) => r._measurement == "fl_server_metrics")
@@ -140,21 +182,29 @@ from(bucket: "fl-metrics")
 // 5. ANALYTICS QUERIES
 // ============================================================
 
-// 5a. Best R² achieved in last 24 hours
+// 5a. Best accuracy achieved in last 24 hours
 from(bucket: "fl-metrics")
   |> range(start: -24h)
   |> filter(fn: (r) => r._measurement == "fl_central_evaluation")
-  |> filter(fn: (r) => r._field == "r2")
+  |> filter(fn: (r) => r._field == "accuracy")
+  |> max()
+  
+
+  // 5b. Best recall achieved in last 24 hours
+from(bucket: "fl-metrics")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r._measurement == "fl_central_evaluation")
+  |> filter(fn: (r) => r._field == "recall")
   |> max()
 
-// 5b. Lowest loss achieved in last 24 hours
+// 5c. Lowest loss achieved in last 24 hours
 from(bucket: "fl-metrics")
   |> range(start: -24h)
   |> filter(fn: (r) => r._measurement == "fl_central_evaluation")
   |> filter(fn: (r) => r._field == "loss")
   |> min()
 
-// 5c. Average client CPU usage
+// 5d. Average client CPU usage
 from(bucket: "fl-metrics")
   |> range(start: -24h)
   |> filter(fn: (r) => r._measurement == "fl_client_metrics")
@@ -162,7 +212,7 @@ from(bucket: "fl-metrics")
   |> mean()
   |> group(columns: ["client_id"])
 
-// 5d. Training sessions count (distinct training runs)
+// 5e. Training sessions count (distinct training runs)
 from(bucket: "fl-metrics")
   |> range(start: -24h)
   |> filter(fn: (r) => r._measurement == "fl_training_progress")
@@ -170,17 +220,31 @@ from(bucket: "fl-metrics")
   |> filter(fn: (r) => r._value == 1.0)
   |> count()
 
-// 5e. R² improvement from first to last round (per session)
-first_r2 = from(bucket: "fl-metrics")
+// 5f.  improvement from first to last round (per session)
+first_accuracy = from(bucket: "fl-metrics")
   |> range(start: -1h)
   |> filter(fn: (r) => r._measurement == "fl_central_evaluation")
-  |> filter(fn: (r) => r._field == "r2")
+  |> filter(fn: (r) => r._field == "accuracy")
   |> first()
 
-last_r2 = from(bucket: "fl-metrics")
+last_accuracy = from(bucket: "fl-metrics")
   |> range(start: -1h)
   |> filter(fn: (r) => r._measurement == "fl_central_evaluation")
-  |> filter(fn: (r) => r._field == "r2")
+  |> filter(fn: (r) => r._field == "accuracy")
+  |> last()
+
+
+// 5g.  improvement from first to last round (per session)
+first_recall = from(bucket: "fl-metrics")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "fl_central_evaluation")
+  |> filter(fn: (r) => r._field == "recall")
+  |> first()
+
+last_recall = from(bucket: "fl-metrics")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "fl_central_evaluation")
+  |> filter(fn: (r) => r._field == "recall")
   |> last()
 
 
@@ -192,13 +256,24 @@ last_r2 = from(bucket: "fl-metrics")
 from(bucket: "fl-metrics")
   |> range(start: -24h)
   |> filter(fn: (r) => r._measurement == "fl_client_metrics")
-  |> filter(fn: (r) => r._field == "train_r2")
+  |> filter(fn: (r) => r._field == "train_accuracy")
   |> group(columns: ["client_id", "round"])
   |> last()
   |> group()
   |> pivot(rowKey: ["round"], columnKey: ["client_id"], valueColumn: "_value")
 
-// 6b. Fit vs Evaluate stage metrics
+// 6b. Compare client performance (side by side)
+from(bucket: "fl-metrics")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r._measurement == "fl_client_metrics")
+  |> filter(fn: (r) => r._field == "train_recall")
+  |> group(columns: ["client_id", "round"])
+  |> last()
+  |> group()
+  |> pivot(rowKey: ["round"], columnKey: ["client_id"], valueColumn: "_value")
+
+
+// 6c. Fit vs Evaluate stage metrics
 from(bucket: "fl-metrics")
   |> range(start: -24h)
   |> filter(fn: (r) => r._measurement == "fl_client_metrics")
@@ -211,14 +286,21 @@ from(bucket: "fl-metrics")
 // 7. TIME-BASED AGGREGATIONS
 // ============================================================
 
-// 7a. Hourly average R² (for long-term trend analysis)
+// 7a. Hourly average accuracy (for long-term trend analysis)
 from(bucket: "fl-metrics")
   |> range(start: -7d)
   |> filter(fn: (r) => r._measurement == "fl_central_evaluation")
-  |> filter(fn: (r) => r._field == "r2")
+  |> filter(fn: (r) => r._field == "accuracy")
   |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
 
-// 7b. Training frequency per day
+// 7b. Hourly average recall (for long-term trend analysis)
+from(bucket: "fl-metrics")
+  |> range(start: -7d)
+  |> filter(fn: (r) => r._measurement == "fl_central_evaluation")
+  |> filter(fn: (r) => r._field == "recall")
+  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
+
+// 7c. Training frequency per day
 from(bucket: "fl-metrics")
   |> range(start: -7d)
   |> filter(fn: (r) => r._measurement == "fl_training_progress")
