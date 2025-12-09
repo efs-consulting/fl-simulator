@@ -117,13 +117,13 @@ def load_data(partition_id: int , is_fit , test_battery_id=1 ):
 
 
     if partition_id == 1 or partition_id == 2 or partition_id == 3 or partition_id == 4 or partition_id == 5:
-        folder = "./Data"
-        done_dir = "./Done"
+        folder = "/app1/Data"
+        done_dir = "/app1/Done"
 
 
     elif  partition_id == 15: # Partion 15 is the central test set in the server
-        folder = "./Data"
-        done_dir = "./Done"
+        folder = "/app/Data"
+        done_dir = "/app/Done"
 
     else:
         raise ValueError("Invalid partition_id")
@@ -193,7 +193,7 @@ def load_data(partition_id: int , is_fit , test_battery_id=1 ):
 
     if partition_id == 15 and is_fit == False :
         data = pd.read_csv(file)
-        directory_data_scaling = "./Model/data.csv"
+        directory_data_scaling = "/app/model/data.csv"
         data_for_scaling = pd.read_csv(directory_data_scaling)
  
         data = data.iloc[:, [8,0,1,2,3,4,5]]
