@@ -196,7 +196,6 @@ def client_fn(context: Context):
     partition_id = context.node_config["partition-id"]
     num_partitions = context.node_config["num-partitions"]
     penalty = context.run_config.get("penalty", "l2")  # safe default
-
     client = FlowerClient(partition_id, num_partitions, penalty)
     return client.to_client()   # This removes the warning!
 

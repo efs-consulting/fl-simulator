@@ -19,13 +19,16 @@ from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
 from sklearnexample.task import (
-    UNIQUE_LABELS,
-    create_log_reg_and_instantiate_parameters,
-    get_model_parameters,
     load_data,
-    set_model_params,
-    central_evaluate
+    central_evaluate,
+     Net,
+    get_numpy_parameters,
+    set_numpy_parameters,
+    initialize_model_parameters,
+    train_one_epoch,
+    evaluate_model,
 )
+
 from sklearnexample.fl_analytics import get_analytics, reset_analytics
 
 
@@ -33,7 +36,7 @@ from sklearnexample.fl_analytics import get_analytics, reset_analytics
 # INFLUXDB CONFIGURATION
 # ===========================================================
 
-INFLUXDB_URL = os.getenv("INFLUXDB_URL", "http://fl-influxdb:8086")
+INFLUXDB_URL = os.getenv("INFLUXDB_URL", "http://localhost:8086")
 INFLUXDB_TOKEN = os.getenv("INFLUXDB_TOKEN", "fl-simulator-token-2025")
 INFLUXDB_ORG = os.getenv("INFLUXDB_ORG", "flower")
 INFLUXDB_BUCKET = os.getenv("INFLUXDB_BUCKET", "fl-metrics")
@@ -116,7 +119,7 @@ def _start_prometheus(port: int = 8001):
 
 
 # Start Prometheus server
-_start_prometheus(port=int(os.getenv("SERVER_METRICS_PORT", "8001")))
+_start_prometheus(port=int(os.getenv("SERVER_METRICS_PORT", "2001")))
 
 SERVER_ROUND = Gauge("fl_server_round", "Current federated learning round")
 SERVER_AGG_TRAIN_ACCURACY = Gauge("fl_server_aggregated_train_accuracy", "Aggregated train R²")
@@ -132,6 +135,7 @@ SERVER_AGG_TEST_RECALL = Gauge("fl_server_aggregated_test_recall", "Aggregated t
 SERVER_CENTRAL_EVAL_ACCURACY = Gauge("fl_server_cetral_evaluation_R2", "central evaluation r2")
 SERVER_CENTRAL_EVAL_LOSS = Gauge("fl_server_cetral_evaluation_loss", "central evaluation loss")
 SERVER_CENTRAL_EVAL_RECALL = Gauge("fl_server_cetral_evaluation_recall", "central evaluation recall")
+SERVER_CENTRAL_EVAL_F1 = Gauge("fl_server_cetral_evaluation_f1", "central evaluation f1-score")
 
 # ---- Per-client metrics (SEPARATE) ----
 CLIENT_TRAIN_ACCURACY = Gauge("fl_client_train_r2","Client training R²",["client_id"],)
@@ -147,7 +151,10 @@ CLIENT_CPU_TIME = Gauge("fl_client_cpu_time_usage", "CPU Time Usage", ["client_i
 
 CLIENT_MEMORY = Gauge("fl_client_memory_fit_mb", "Memory MB change during fit", ["client_id"])
 
+import os
 
+files = os.listdir(".")
+print("Current directory files:", files)
 # Global storage for client metrics (to pass to analytics)
 _current_round_client_metrics: Dict[str, Dict] = {}
 
@@ -315,11 +322,14 @@ def evaluate_fn(server_round, parameters, config):
     # NOW you have the values right here:
     acc = metrics["accuracy"]
     recall = metrics["recall"]
+    f1_score = metrics["f1_score"]
 
     print("[SERVER] Central evaluation:", metrics)
     SERVER_CENTRAL_EVAL_ACCURACY.set(acc)
     SERVER_CENTRAL_EVAL_LOSS.set(loss)
     SERVER_CENTRAL_EVAL_RECALL.set(recall)
+    SERVER_CENTRAL_EVAL_F1.set(f1_score)
+    
 
 
 
@@ -329,7 +339,8 @@ def evaluate_fn(server_round, parameters, config):
         {
             "accuracy": float(acc) if acc is not None else 0.0,
             "loss": float(loss),
-            "recall": float(recall) if recall is not None else 0.0
+            "recall": float(recall) if recall is not None else 0.0,
+            "f1_score": float(f1_score) if f1_score is not None else 0.0
         },
         tags={"round": str(server_round)}
     )
@@ -345,6 +356,8 @@ def evaluate_fn(server_round, parameters, config):
         "test_accuracy": float(SERVER_AGG_TEST_ACCURACY._value.get()) if SERVER_AGG_TEST_ACCURACY._value.get() else 0.0,
         "train_recall": float(SERVER_AGG_TRAIN_RECALL._value.get()) if SERVER_AGG_TRAIN_RECALL._value.get() else 0.0,
         "test_recall": float(SERVER_AGG_TEST_RECALL._value.get()) if SERVER_AGG_TEST_RECALL._value.get() else 0.0,
+        "train_f1": float(SERVER_AGG_TRAIN_F1._value.get()) if SERVER_AGG_TRAIN_F1._value.get() else 0.0,
+        "test_f1": float(SERVER_AGG_TEST_F1._value.get()) if SERVER_AGG_TEST_F1._value.get() else 0.0,
         "loss": float(SERVER_AGG_LOSS._value.get()) if SERVER_AGG_LOSS._value.get() else 0.0
     }
 
@@ -395,7 +408,12 @@ def evaluate_fn(server_round, parameters, config):
 
     # Saving the final model after each round
     ndarrays = parameters
-    np.savez("/app/model/final_model.npz", *ndarrays)
+    from pathlib import Path
+    path = Path.cwd()
+    model_path = "/model"
+    save_dir = str(path) + model_path
+
+    np.savez(save_dir, *ndarrays)
     print("💾 Final model saved to saved_model/final_model.npz")
 
     return loss, metrics
@@ -411,13 +429,14 @@ def fit_config(server_round: int):
     )
     return {"local_epochs": 5}
 
-def server_fn(context: Context) -> ServerAppComponents:
-    penalty = context.run_config["penalty"]
 
-    # Initialize model
-    model = create_log_reg_and_instantiate_parameters(penalty)
-    ndarrays = get_model_parameters(model)
-    init_params = ndarrays_to_parameters(ndarrays)
+def server_fn(context: Context) -> ServerAppComponents:
+
+
+    model = Net()
+    initial_ndarrays = initialize_model_parameters(model)
+    init_params = ndarrays_to_parameters(initial_ndarrays)
+
 
     min_clients = context.run_config["min-available-clients"]
 
@@ -431,8 +450,8 @@ def server_fn(context: Context) -> ServerAppComponents:
     )
 
     num_rounds = context.run_config["num-server-rounds"]
-    config = ServerConfig(num_rounds=num_rounds)
 
+    config = ServerConfig(num_rounds=num_rounds)
 
     return ServerAppComponents(strategy=strategy, config=config )
 

@@ -14,7 +14,7 @@ from sklearn.linear_model import LogisticRegression
 from torch import nn
 from typing import List, Tuple
 from flwr.common import ndarrays_to_parameters, parameters_to_ndarrays
-from sklearn.metrics import mean_squared_error, r2_score,recall_score
+from sklearn.metrics import mean_squared_error, r2_score,recall_score , f1_score
 import torch
 
 
@@ -115,14 +115,15 @@ def load_data(partition_id: int , is_fit , test_battery_id=1 ):
     import os
     import shutil
 
+
     if partition_id == 1 or partition_id == 2 or partition_id == 3 or partition_id == 4 or partition_id == 5:
-        folder = "/app1/Data"
-        done_dir = "/app1/Done"
+        folder = "./Data"
+        done_dir = "./Done"
 
 
     elif  partition_id == 15: # Partion 15 is the central test set in the server
-        folder = "/app/Data"
-        done_dir = "/app/Done"
+        folder = "./Data"
+        done_dir = "./Done"
 
     else:
         raise ValueError("Invalid partition_id")
@@ -169,7 +170,7 @@ def load_data(partition_id: int , is_fit , test_battery_id=1 ):
         test_y = None
 
 
-    elif is_fit == False :
+    elif is_fit == False  and partition_id != 15:
         df = pd.read_csv(file)
         cutoff = int(len(df) * 0.8)
         data = df.iloc[cutoff:]
@@ -187,11 +188,38 @@ def load_data(partition_id: int , is_fit , test_battery_id=1 ):
 
         train_x = None
         train_y = None
-
-
-    if partition_id != 15 and is_fit == False :
         shutil.copy2(file, done_dir)  # copy file
         os.remove(file) 
+
+    if partition_id == 15 and is_fit == False :
+        data = pd.read_csv(file)
+        directory_data_scaling = "./Model/data.csv"
+        data_for_scaling = pd.read_csv(directory_data_scaling)
+ 
+        data = data.iloc[:, [8,0,1,2,3,4,5]]
+        data_scaling = data_for_scaling.iloc[:, [8,0,1,2,3,4,5]]
+        data_scaling_x = data_scaling.iloc[:, :-1].values
+        test_x = data.iloc[:, :-1].values
+
+
+        scaler = StandardScaler()
+        INDICES_TO_SCALE = [1, 2, 3, 4] 
+        data_scaling_x_to_scale = data_scaling_x[:, INDICES_TO_SCALE]
+        scaler.fit(data_scaling_x_to_scale)
+        
+
+        test_x_to_scale = test_x[:, INDICES_TO_SCALE]
+        test_x[:, INDICES_TO_SCALE] = scaler.transform(test_x_to_scale)
+        test_y = data.iloc[:, -1].values
+        test_y = test_y.squeeze()
+        type_mapping = {'L': 1, 'M': 2, 'H': 3}
+        test_x[:, 0] = np.vectorize(type_mapping.get)(test_x[:, 0])
+
+        train_x = None
+        train_y = None
+        shutil.copy2(file, done_dir)  # copy file
+        os.remove(file) 
+
 
     return train_x, train_y, test_x, test_y
 
@@ -353,10 +381,16 @@ def central_evaluate(server_round: int, parameters, config) -> MetricRecord:
             y_pred_indices,
             average='binary'
         )
+    f1score = f1_score(
+            y_test_int,
+            y_pred_indices,
+            average='binary'
+        )
 
     return loss, {
         "accuracy": float(accuracy)
-        ,"recall": float(recall)
+        ,"recall": float(recall),
+        "f1_score": float(f1score)
     }
 
 

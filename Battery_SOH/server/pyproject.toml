@@ -26,7 +26,7 @@ clientapp = "sklearnexample.client_app:app"
 
 [tool.flwr.app.config]
 penalty = "l2"
-num-server-rounds = 10
+num-server-rounds = 9
 min-available-clients = 4
 
 

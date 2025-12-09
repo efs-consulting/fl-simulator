@@ -3,6 +3,13 @@ version: "3.9"
 services:
   supernode-3:
     image: flwr/supernode:${FLWR_VERSION:-1.23.0}
+    environment:
+      # Disable Ray metrics exporter to prevent connection errors
+      - RAY_DISABLE_METRICS=1
+      - RAY_metrics_exporter_port=0
+      - RAY_BACKEND_LOG_LEVEL=warning
+      - RAY_enable_metrics_export=false
+      - PYTHONUNBUFFERED=1
     command:
       - --insecure
       - --superlink
@@ -34,9 +41,19 @@ services:
         COPY --chown=app:app sklearnexample/ ./sklearnexample/
         RUN sed -i 's/.*flwr\[simulation\].*//' pyproject.toml \
           && python -m pip install -U --no-cache-dir .
+        ENV RAY_DISABLE_METRICS=1
+        ENV RAY_metrics_exporter_port=0
+        ENV RAY_BACKEND_LOG_LEVEL=warning
         ENTRYPOINT ["flower-superexec"]
     ports:
       - "8003:8003"
+    environment:
+      # Disable Ray metrics exporter to prevent connection errors
+      - RAY_DISABLE_METRICS=1
+      - RAY_metrics_exporter_port=0
+      - RAY_BACKEND_LOG_LEVEL=warning
+      - RAY_enable_metrics_export=false
+      - PYTHONUNBUFFERED=1
     command:
       - --insecure
       - --plugin-type
