@@ -173,6 +173,8 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Dict[str, Scalar]:
 
     # Initialize weighted sums
     sum_train_r2, sum_test_r2, sum_loss = 0.0, 0.0, 0.0
+    sum_train_f1, sum_test_f1 = 0.0, 0.0
+    sum_train_recall, sum_test_recall = 0.0, 0.0
     stage = None
     current_round = int(SERVER_ROUND._value.get())  # Get current round for InfluxDB tags
 
@@ -276,9 +278,11 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Dict[str, Scalar]:
         # Write aggregated fit metrics to InfluxDB
         write_to_influxdb(
             "fl_server_metrics",
-            {"aggregated_train_accuracy": aggregated["train_accuracy"]},
-            {"aggregated_train_f1": aggregated["train_f1"]},
-            {"aggregated_train_recall": aggregated["train_recall"]},
+            {
+                "aggregated_train_accuracy": aggregated["train_accuracy"],
+                "aggregated_train_f1": aggregated["train_f1"],
+                "aggregated_train_recall": aggregated["train_recall"]
+            },
             tags={"round": str(current_round), "stage": "fit"}
         )
       

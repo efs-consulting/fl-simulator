@@ -53,6 +53,11 @@ services:
       - RAY_BACKEND_LOG_LEVEL=warning
       - RAY_enable_metrics_export=false
       - PYTHONUNBUFFERED=1
+      # InfluxDB connection via Docker network
+      - INFLUXDB_URL=http://fl-influxdb:8086
+      - INFLUXDB_TOKEN=fl-simulator-token-2025
+      - INFLUXDB_ORG=flower
+      - INFLUXDB_BUCKET=fl-metrics
     command:
       - --insecure
       - --plugin-type
