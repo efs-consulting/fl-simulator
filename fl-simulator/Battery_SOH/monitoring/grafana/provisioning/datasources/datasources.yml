@@ -1,0 +1,35 @@
+# Grafana Data Sources for FL Simulator
+# Created: 2025-11-29
+# Updated: 2025-12-01 - Removed Prometheus, using InfluxDB only
+
+apiVersion: 1
+
+datasources:
+  # InfluxDB - Primary data source for FL metrics
+  - name: InfluxDB-FL
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    uid: influxdb-fl
+    isDefault: true
+    jsonData:
+      version: Flux
+      organization: flower
+      defaultBucket: fl-metrics
+      tlsSkipVerify: true
+    secureJsonData:
+      token: fl-simulator-token-2025
+
+  # InfluxDB Hourly Bucket (for downsampled data)
+  - name: InfluxDB-FL-Hourly
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    uid: influxdb-fl-hourly
+    jsonData:
+      version: Flux
+      organization: flower
+      defaultBucket: fl-metrics-hourly
+      tlsSkipVerify: true
+    secureJsonData:
+      token: fl-simulator-token-2025

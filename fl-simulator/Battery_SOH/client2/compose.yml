@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  supernode-3:
+    image: flwr/supernode:${FLWR_VERSION:-1.23.0}
+    command:
+      - --insecure
+      - --superlink
+      - ${SERVER_IP:-host.docker.internal}:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9096
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=2 num-partitions=6"
+    ports:
+      - "9096:9096"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - fl-monitoring-network
+
+  superexec-clientapp-3:
+    build:
+      context: ${PROJECT_DIR:-.}
+      dockerfile_inline: |
+        FROM flwr/superexec:${FLWR_VERSION:-1.23.0}
+        RUN pip install --no-cache-dir prometheus-client
+        RUN pip install --no-cache-dir psutil
+        RUN pip install --no-cache-dir influxdb-client
+        WORKDIR /app1
+        COPY --chown=app:app pyproject.toml .
+        COPY --chown=app:app sklearnexample/ ./sklearnexample/
+        RUN sed -i 's/.*flwr\[simulation\].*//' pyproject.toml \
+          && python -m pip install -U --no-cache-dir .
+        ENTRYPOINT ["flower-superexec"]
+    ports:
+      - "8003:8003"
+    command:
+      - --insecure
+      - --plugin-type
+      - clientapp
+      - --appio-api-address
+      - supernode-3:9096
+    depends_on:
+      - supernode-3
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./quickstart-sklearn-tabular/Data:/app1/Data
+      - ./quickstart-sklearn-tabular/Done:/app1/Done
+    networks:
+      - default
+      - fl-monitoring-network
+
+networks:
+  fl-monitoring-network:
+    external: true 

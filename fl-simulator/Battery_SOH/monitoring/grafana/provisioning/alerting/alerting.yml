@@ -1,0 +1,108 @@
+# Grafana Alerting Configuration for FL Simulator
+# Created: 2025-11-29
+# Note: Slack integration commented out - add SLACK_WEBHOOK_URL to enable
+
+apiVersion: 1
+
+# Contact points for alert notifications
+contactPoints:
+  - orgId: 1
+    name: fl-alerts-email
+    receivers:
+      - uid: email-receiver
+        type: email
+        settings:
+          addresses: "fl-alerts@example.com"
+          singleEmail: true
+        disableResolveMessage: false
+
+# Notification policies (routing)
+policies:
+  - orgId: 1
+    receiver: fl-alerts-email
+    group_by:
+      - alertname
+      - severity
+    routes:
+      # Critical alerts - immediate
+      - receiver: fl-alerts-email
+        matchers:
+          - severity = critical
+        group_wait: 10s
+        group_interval: 1m
+        repeat_interval: 4h
+
+      # Warning alerts with 1 minute delay
+      - receiver: fl-alerts-email
+        matchers:
+          - severity = warning
+        group_wait: 1m
+        group_interval: 5m
+        repeat_interval: 12h
+
+      # Info alerts (less urgent)
+      - receiver: fl-alerts-email
+        matchers:
+          - severity = info
+        group_wait: 5m
+        group_interval: 15m
+        repeat_interval: 24h
+
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+
+# Alert templates
+templates:
+  - orgId: 1
+    name: fl-alert-templates
+    template: |
+      {{ define "fl.alert.title" }}
+      [{{ .Status | toUpper }}] {{ .Labels.alertname }}
+      {{ end }}
+
+      {{ define "fl.alert.message" }}
+      **Alert**: {{ .Labels.alertname }}
+      **Severity**: {{ .Labels.severity }}
+      **Component**: {{ .Labels.component }}
+
+      {{ if .Annotations.summary }}
+      **Summary**: {{ .Annotations.summary }}
+      {{ end }}
+
+      {{ if .Annotations.description }}
+      **Description**: {{ .Annotations.description }}
+      {{ end }}
+
+      **Started**: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+      {{ if .EndsAt }}
+      **Resolved**: {{ .EndsAt.Format "2006-01-02 15:04:05" }}
+      {{ end }}
+      {{ end }}
+
+# Mute timings (optional - for maintenance windows)
+muteTimes:
+  - orgId: 1
+    name: maintenance-window
+    time_intervals:
+      - times:
+          - start_time: "02:00"
+            end_time: "04:00"
+        weekdays:
+          - "sunday"
+
+# To enable Slack notifications:
+# 1. Set SLACK_WEBHOOK_URL environment variable
+# 2. Uncomment the slack contact point below
+# 3. Add slack routes to policies
+#
+# contactPoints:
+#   - orgId: 1
+#     name: fl-alerts-slack
+#     receivers:
+#       - uid: slack-receiver
+#         type: slack
+#         settings:
+#           url: "${SLACK_WEBHOOK_URL}"
+#           recipient: "#fl-monitoring"
+#           username: "FL Simulator Alerts"

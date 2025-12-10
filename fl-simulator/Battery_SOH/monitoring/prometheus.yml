@@ -1,0 +1,83 @@
+# Prometheus Configuration for FL Simulator
+# Created: 2025-11-29
+
+global:
+  scrape_interval: 1s
+  evaluation_interval: 5s
+  external_labels:
+    cluster: "fl-simulator"
+    environment: "development"
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+          # Add alertmanager target when needed: ["alertmanager:9093"]
+
+# Rule files for alerts
+rule_files:
+  - "/etc/prometheus/alerts.yml"
+
+# Remote write to InfluxDB for long-term storage
+remote_write:
+  - url: "http://influxdb:8086/api/v1/prom/write?db=prometheus&u=admin&p=flsimulator2025"
+    queue_config:
+      capacity: 10000
+      max_shards: 5
+      min_shards: 1
+      max_samples_per_send: 5000
+      batch_send_deadline: 5s
+    write_relabel_configs:
+      # Only forward FL-related metrics to InfluxDB
+      - source_labels: [__name__]
+        regex: "fl_.*"
+        action: keep
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          component: "prometheus"
+
+  # FL Server metrics (SuperExec ServerApp)
+  # Uses container name on fl-monitoring-network
+  - job_name: "flower-server"
+    scrape_interval: 1s
+    static_configs:
+      - targets: ["server-superexec-serverapp-1:8001"]
+        labels:
+          component: "server"
+          role: "aggregator"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: "fl-server"
+
+  # FL Client metrics (SuperExec ClientApps)
+  # Uses container names on fl-monitoring-network
+  - job_name: "flower-clients"
+    scrape_interval: 1s
+    static_configs:
+      - targets: ["client1-superexec-clientapp-2-1:8002"]
+        labels:
+          component: "client"
+          client_id: "1"
+      - targets: ["client2-superexec-clientapp-3-1:8003"]
+        labels:
+          component: "client"
+          client_id: "2"
+    relabel_configs:
+      - source_labels: [client_id]
+        target_label: partition_id
+
+  # InfluxDB metrics
+  - job_name: "influxdb"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["influxdb:8086"]
+        labels:
+          component: "storage"
